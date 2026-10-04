@@ -175,7 +175,7 @@
           <i class="fa-solid fa-graduation-cap"></i>
         </div>
         <div>
-          <h1 class="text-[22px] md:text-[24px] font-extrabold tracking-tight flex items-baseline gap-2 leading-none cursor-pointer" onclick="showPlanView()">
+          <h1 id="btnBrandGuide" class="text-[22px] md:text-[24px] font-extrabold tracking-tight flex items-baseline gap-2 leading-none cursor-pointer" role="button" tabindex="0" aria-label="사용설명서로 이동">
             <span class="text-blue-600 inline-block"><span class="brand-title-dot">월</span><span class="brand-title-dot">중</span><span class="brand-title-dot">계</span><span class="brand-title-dot">획</span></span>
             <span class="text-orange-400 inline-block">편하샘</span>
           </h1>
@@ -3983,6 +3983,7 @@
     const baseConfigPageContainer = document.getElementById("baseConfigPageContainer");
     const searchPastPageContainer = document.getElementById("searchPastPageContainer");
     const guidePageContainer = document.getElementById("guidePageContainer");
+    const btnBrandGuide = document.getElementById("btnBrandGuide");
 
     const btnSubConfigCredentials = document.getElementById("btnSubConfigCredentials");
     const btnSubConfigBackup = document.getElementById("btnSubConfigBackup");
@@ -4556,12 +4557,24 @@
     if (searchPastYear) searchPastYear.addEventListener("change", executePastPlansSearch);
     if (searchPastMonth) searchPastMonth.addEventListener("change", executePastPlansSearch);
 
-    const btnOpenG = document.getElementById("btnOpenGuide");
-    if (btnOpenG) btnOpenG.addEventListener("click", function() {
+    function showGuidePage() {
       hideAllPages();
       if (guidePageContainer) guidePageContainer.classList.remove("hidden");
       resetSubMenuStyles();
-    });
+    }
+
+    if (btnBrandGuide) {
+      btnBrandGuide.addEventListener("click", showGuidePage);
+      btnBrandGuide.addEventListener("keydown", function(event) {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          showGuidePage();
+        }
+      });
+    }
+
+    const btnOpenG = document.getElementById("btnOpenGuide");
+    if (btnOpenG) btnOpenG.addEventListener("click", showGuidePage);
 
     if (btnSubConfigCredentials) btnSubConfigCredentials.addEventListener("click", function() { openAdminConfig("credentials"); });
     if (btnSubConfigBackup) btnSubConfigBackup.addEventListener("click", function() { openAdminConfig("backup"); });
