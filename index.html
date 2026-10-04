@@ -772,12 +772,12 @@
                 <div class="p-4 bg-white border border-slate-200 rounded-xl space-y-3">
                   <div class="flex items-center gap-2 text-slate-900">
                     <i class="fa-solid fa-user-lock text-rose-600"></i>
-                    <h3 class="font-extrabold text-sm">내 계정 아이디·비밀번호 변경</h3>
+                    <h3 class="font-extrabold text-sm">관리자 아이디·비밀번호 변경</h3>
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <label class="block text-xs font-semibold text-slate-700 sm:col-span-2">
-                      새 이메일 (로그인 아이디)
-                      <input type="email" id="adminNewId" autocomplete="username" class="mt-1 w-full border border-slate-300 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-rose-300 focus:outline-none" placeholder="바꾸지 않으면 비워두세요">
+                      새 이메일 (관리자 아이디)
+                      <input type="email" id="adminNewId" autocomplete="username" class="mt-1 w-full border border-slate-300 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-rose-300 focus:outline-none" placeholder="관리자 로그인 이메일">
                     </label>
                     <label class="block text-xs font-semibold text-slate-700 sm:col-span-2">
                       현재 비밀번호
@@ -4096,10 +4096,6 @@
     updateAdminSessionButton();
 
     function openAdminConfig(sectionKey) {
-      if (sectionKey === "credentials" && window.isFirebaseAuthenticated) {
-        showConfigSectionView(sectionKey);
-        return;
-      }
       if (!window.isAdminAuthenticated) {
         openAdminLoginModal(sectionKey);
         return;
@@ -4129,7 +4125,7 @@
           await window.firebaseAuthClient.signIn(email, pwVal);
           if (pwElem) pwElem.value = "";
           closeAdminLoginModal();
-          if (pendingAdminSection === "credentials" || (window.isAdminAuthenticated && pendingAdminSection !== "plan")) {
+          if (window.isAdminAuthenticated && pendingAdminSection !== "plan") {
             showConfigSectionView(pendingAdminSection);
           } else {
             showPlanView();
@@ -4151,7 +4147,7 @@
     const btnUpdateAdminCredentials = document.getElementById("btnUpdateAdminCredentials");
     if (btnUpdateAdminCredentials) {
       btnUpdateAdminCredentials.addEventListener("click", async function() {
-        if (!window.isFirebaseAuthenticated) {
+        if (!window.isAdminAuthenticated) {
           openAdminLoginModal("credentials");
           return;
         }
@@ -4211,7 +4207,7 @@
         if (currentPasswordInput) currentPasswordInput.value = "";
         if (passwordInput) passwordInput.value = "";
         if (confirmInput) confirmInput.value = "";
-        showToast("계정 이메일과 비밀번호가 변경되었습니다.");
+        showToast("관리자 아이디와 비밀번호가 변경되었습니다.");
       });
     }
 
@@ -4625,7 +4621,7 @@
 
       if (sectionKey === "credentials") {
         if (secCredentials) secCredentials.classList.remove("hidden");
-        if (titleEl) titleEl.textContent = "내 계정 아이디·비밀번호 변경";
+        if (titleEl) titleEl.textContent = "관리자 아이디·비밀번호 변경";
         if (iconEl) iconEl.innerHTML = '<i class="fa-solid fa-user-lock"></i>';
         if (btnSubConfigCredentials) {
           btnSubConfigCredentials.classList.add("bg-rose-100", "text-rose-800", "font-bold");
