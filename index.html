@@ -5616,7 +5616,11 @@
           };
 
           // 최신 확정 데이터 단일 보관
-          localStorage.setItem("schoolMonthlyPlan_confirmedData", JSON.stringify(snapshot));
+          try {
+            localStorage.setItem("schoolMonthlyPlan_confirmedData", JSON.stringify(snapshot));
+          } catch (storageError) {
+            console.warn("최신 확정 자료의 로컬 저장을 건너뜁니다:", storageError);
+          }
 
           // 학년도 및 월별 확정 아카이브(누적 보관소)에 영구 저장
           let archiveMap = {};
@@ -5625,12 +5629,34 @@
             if (storedArchive) archiveMap = JSON.parse(storedArchive);
           } catch(e) { archiveMap = {}; }
 
+          // Each archive entry only needs the schedule cells for its own month.
+          Object.keys(archiveMap).forEach(function(archiveKey) {
+            const month = archiveKey.split("_").pop();
+            const archived = archiveMap[archiveKey];
+            if (!archived || !archived.scheduleGridCells || !/^\d{1,2}$/.test(month)) return;
+            const prefix = `cell-${month}-`;
+            archived.scheduleGridCells = Object.fromEntries(Object.entries(archived.scheduleGridCells).filter(function(entry) {
+              return entry[0].startsWith(prefix);
+            }));
+          });
           activeMonths.forEach(function(mStr) {
             const archiveKey = `${currentArchiveYear}_${mStr}`;
-            archiveMap[archiveKey] = snapshot;
+            const prefix = `cell-${mStr}-`;
+            const monthSnapshot = Object.assign({}, snapshot, {
+              selectedPlanMonths: [String(mStr)],
+              currentPlanMonth: String(mStr),
+              scheduleGridCells: Object.fromEntries(Object.entries(snapshot.scheduleGridCells).filter(function(entry) {
+                return entry[0].startsWith(prefix);
+              }))
+            });
+            archiveMap[archiveKey] = monthSnapshot;
           });
 
-          localStorage.setItem("schoolMonthlyPlan_confirmedArchive", JSON.stringify(archiveMap));
+          try {
+            localStorage.setItem("schoolMonthlyPlan_confirmedArchive", JSON.stringify(archiveMap));
+          } catch (storageError) {
+            console.warn("월별 확정 이력의 로컬 저장을 건너뜁니다:", storageError);
+          }
           if (window.firebaseAuthClient && window.isFirebaseAuthenticated) {
             window.firebaseAuthClient.saveConfirmedPlan(snapshot, activeMonths).catch(function(error) {
               console.warn("공유 확정 자료 저장 오류:", error);
