@@ -4186,18 +4186,21 @@
           return;
         }
 
+        let result;
         try {
-          await window.firebaseAuthClient.updateCredentials({
+          result = await window.firebaseAuthClient.updateCredentials({
             currentPassword: currentPassword,
             newEmail: newEmail,
             newPassword: newPassword
           });
         } catch (e) {
           console.warn("Firebase 로그인 정보 변경 오류:", e);
-          const message = e && e.code === "auth/wrong-password"
+          const message = e && (e.code === "auth/wrong-password" || e.code === "auth/invalid-credential")
             ? "현재 비밀번호가 올바르지 않습니다."
             : e && e.code === "auth/email-already-in-use"
               ? "이미 사용 중인 이메일입니다."
+              : e && e.code === "auth/invalid-email"
+                ? "새 이메일 주소를 확인해주세요."
               : "변경하지 못했습니다. 입력 내용과 계정 상태를 확인해주세요.";
           showToast(message);
           return;
@@ -4207,7 +4210,9 @@
         if (currentPasswordInput) currentPasswordInput.value = "";
         if (passwordInput) passwordInput.value = "";
         if (confirmInput) confirmInput.value = "";
-        showToast("관리자 아이디와 비밀번호가 변경되었습니다.");
+        showToast(result && result.emailVerificationPending
+          ? "새 이메일로 확인 링크를 보냈습니다. 메일에서 확인하면 관리자 아이디가 변경됩니다."
+          : "관리자 비밀번호가 변경되었습니다.");
       });
     }
 
@@ -6090,8 +6095,8 @@
     reauthenticateWithCredential,
     signInWithEmailAndPassword,
     signOut,
-    updateEmail,
-    updatePassword
+    updatePassword,
+    verifyBeforeUpdateEmail
   } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
   import {
     get,
@@ -6343,10 +6348,12 @@
       if (!user || !user.email) throw new Error("로그인 상태를 확인해주세요.");
       const credential = EmailAuthProvider.credential(user.email, details.currentPassword);
       await reauthenticateWithCredential(user, credential);
-      if (details.newEmail && details.newEmail !== user.email) await updateEmail(user, details.newEmail);
+      const emailVerificationPending = Boolean(details.newEmail && details.newEmail !== user.email);
+      if (emailVerificationPending) await verifyBeforeUpdateEmail(user, details.newEmail);
       if (details.newPassword) await updatePassword(user, details.newPassword);
       currentUser = auth.currentUser;
       if (window.applyFirebaseAuthState) window.applyFirebaseAuthState(currentUser, ADMIN_UID);
+      return { emailVerificationPending: emailVerificationPending };
     },
     saveConfirmedPlan: async function(snapshot, months) {
       if (!currentUser || currentUser.uid !== ADMIN_UID) throw new Error("관리자 로그인이 필요합니다.");
