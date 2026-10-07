@@ -1258,6 +1258,158 @@
       return monthConfigs;
     }
 
+    // ---------- 계획표 공통 계산 (교육활동 계획·이전 계획 검색·한글 내려받기·학사일정 표가 함께 사용) ----------
+    const weeklyDayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+
+    function escapeHtml(text) {
+      return String(text == null ? "" : text).replace(/[&<>"]/g, function(ch) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch];
+      });
+    }
+
+    // 날짜 하나의 요일·공휴일 정보
+    function getDayInfo(year, month, day) {
+      const dow = new Date(year, month - 1, day).getDay();
+      const holidayName = checkHoliday(year, month, day);
+      const isWeekend = dow === 0 || dow === 6;
+      return { dow: dow, dowName: dayNames[dow], holidayName: holidayName, isWeekend: isWeekend, isOff: isWeekend || holidayName !== null };
+    }
+
+    // 쉬는 날(주말·공휴일)이면 그 뒤 첫 근무일, 없으면 null
+    function nextWorkingDay(year, month, fromDay, totalDays) {
+      for (let d = fromDay; d <= totalDays; d++) {
+        if (!getDayInfo(year, month, d).isOff) return d;
+      }
+      return null;
+    }
+
+    // 정기일정을 날짜별로 배치: { 일: [{ deptIndex, text }] }
+    function buildRecurringMap(year, month, totalDays) {
+      const map = {};
+      for (let d = 1; d <= totalDays; d++) map[d] = [];
+      const place = function(day, item) {
+        if (map[day]) map[day].push({ deptIndex: parseInt(item.deptIndex, 10), text: item.text.trim() });
+      };
+
+      (window.recurringEvents || []).forEach(function(item) {
+        if (item.enabled === false || !item.text || !item.text.trim()) return;
+        const policy = item.holidayPolicy || "postpone";
+        const rawDay = String(item.day || "day-1").trim();
+
+        // 매월 n번째(또는 마지막) 요일: 공휴일과 겹칠 때만 처리 규칙 적용
+        if (rawDay.startsWith("nth-")) {
+          const parts = rawDay.split("-");
+          const targetWeekday = weeklyDayMap[parts[2]];
+          if (targetWeekday === undefined) return;
+          let foundDay = null;
+          if (parts[1] === "last") {
+            for (let d = totalDays; d >= 1 && foundDay === null; d--) {
+              if (getDayInfo(year, month, d).dow === targetWeekday) foundDay = d;
+            }
+          } else {
+            let count = 0;
+            for (let d = 1; d <= totalDays && foundDay === null; d++) {
+              if (getDayInfo(year, month, d).dow === targetWeekday && ++count === parseInt(parts[1], 10)) foundDay = d;
+            }
+          }
+          if (foundDay === null) return;
+          let assignedDay = foundDay;
+          if (getDayInfo(year, month, foundDay).holidayName) {
+            if (policy === "skip") return;
+            if (policy === "postpone") assignedDay = nextWorkingDay(year, month, foundDay + 1, totalDays) || foundDay;
+          }
+          place(assignedDay, item);
+          return;
+        }
+
+        // 매주 요일
+        if (rawDay.startsWith("week-") || weeklyDayMap[rawDay] !== undefined) {
+          const targetWeekday = weeklyDayMap[rawDay.replace("week-", "")];
+          if (targetWeekday === undefined) return;
+          for (let d = 1; d <= totalDays; d++) {
+            const info = getDayInfo(year, month, d);
+            if (info.dow !== targetWeekday) continue;
+            if (info.holidayName && policy === "skip") continue;
+            if (info.holidayName && policy === "postpone") {
+              const moved = nextWorkingDay(year, month, d + 1, totalDays);
+              if (moved !== null) place(moved, item);
+              continue;
+            }
+            place(d, item);
+          }
+          return;
+        }
+
+        // 매월 n일(또는 말일): 주말·공휴일과 겹치면 처리 규칙 적용
+        const cleanD = rawDay.replace("day-", "");
+        const targetDay = cleanD === "last" ? totalDays : parseInt(cleanD, 10);
+        if (isNaN(targetDay) || targetDay < 1 || targetDay > totalDays) return;
+        const isTargetOff = getDayInfo(year, month, targetDay).isOff;
+        if (isTargetOff && policy === "skip") return;
+        const assignedDay = (isTargetOff && policy === "postpone") ? (nextWorkingDay(year, month, targetDay, totalDays) || targetDay) : targetDay;
+        place(assignedDay, item);
+      });
+      return map;
+    }
+
+    // 한 달치 계획표 행 계산
+    // source: { departments, cells, annualEvents, deletedKeys }
+    function buildPlanRows(year, month, source) {
+      const totalDays = getDaysInMonth(year, month);
+      const recurringMap = buildRecurringMap(year, month, totalDays);
+      const rows = [];
+      for (let day = 1; day <= totalDays; day++) {
+        const rowKey = `${month}-${day}`;
+        if ((source.deletedKeys || []).includes(rowKey)) continue;
+
+        const info = getDayInfo(year, month, day);
+        const inheritedEvent = (source.annualEvents || {})[rowKey] || "";
+        const isSchoolHoliday = isSchoolHolidayText(inheritedEvent);
+        const recurring = recurringMap[day] || [];
+
+        // 첫 번째 부서 칸 기본값: 학사일정 + 정기일정(첫 부서) + 공휴일 이름
+        const firstColParts = [];
+        if (inheritedEvent.trim()) firstColParts.push(inheritedEvent.trim());
+        recurring.filter(function(r) { return r.deptIndex === 0; }).forEach(function(r) {
+          if (r.text && !firstColParts.join(" ").includes(r.text)) firstColParts.push(r.text);
+        });
+        if (info.holidayName && info.holidayName.trim()) {
+          const holiday = info.holidayName.trim();
+          if (!inheritedEvent.replace(/\s+/g, "").includes(holiday.replace(/\s+/g, ""))) firstColParts.push(holiday);
+        }
+
+        const cells = (source.departments || []).map(function(dept, dIdx) {
+          const cellId = `cell-${month}-${day}-${dIdx}`;
+          let text;
+          if (source.cells && source.cells[cellId] !== undefined) {
+            text = formatWithDash(source.cells[cellId]);
+          } else if (dIdx === 0) {
+            text = formatWithDash(firstColParts.join("\n"));
+          } else {
+            text = formatWithDash(recurring.filter(function(r) { return r.deptIndex === dIdx; }).map(function(r) { return r.text; }).join("\n"));
+          }
+          return { cellId: cellId, deptIndex: dIdx, text: text, isHolidayText: dIdx === 0 && Boolean(info.holidayName || isSchoolHoliday) };
+        });
+
+        rows.push({
+          rowKey: rowKey, year: year, month: month, day: day, dowName: info.dowName,
+          holidayName: info.holidayName, isSchoolHoliday: isSchoolHoliday,
+          isOff: info.isOff || isSchoolHoliday, cells: cells
+        });
+      }
+      return rows;
+    }
+
+    // 지금 편집 중인 계획표의 데이터
+    function currentPlanSource() {
+      return {
+        departments: getActiveDepartments(),
+        cells: window.scheduleGridCells || {},
+        annualEvents: window.annualGridEvents || {},
+        deletedKeys: window.deletedRowKeys || []
+      };
+    }
+
     function formatWithDash(text) {
       if (!text || !text.trim()) return "";
       return text.split(/\r?\n/).map(function(line) {
@@ -1805,239 +1957,27 @@
           tbody.appendChild(sepTr);
         }
 
-        const monthRecurringMap = {};
-        for (let d = 1; d <= cfg.days; d++) {
-          monthRecurringMap[d] = [];
-        }
-
-        const weeklyDayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
-
-        (window.recurringEvents || []).forEach(function(item) {
-          if (item.enabled === false) return;
-          if (!item.text || !item.text.trim()) return;
-
-          const policy = item.holidayPolicy || "postpone";
-          const rawDay = String(item.day || "day-1").trim();
-
-          if (rawDay.startsWith("nth-")) {
-            const parts = rawDay.split("-");
-            const nthTarget = parts[1];
-            const wDayCode = parts[2];
-            const targetWeekday = weeklyDayMap[wDayCode];
-
-            if (targetWeekday !== undefined) {
-              let matchCount = 0;
-              let foundDay = null;
-
-              if (nthTarget === "last") {
-                for (let d = cfg.days; d >= 1; d--) {
-                  const dObj = new Date(cfg.year, cfg.month - 1, d);
-                  if (dObj.getDay() === targetWeekday) {
-                    foundDay = d;
-                    break;
-                  }
-                }
-              } else {
-                const targetCount = parseInt(nthTarget, 10);
-                for (let d = 1; d <= cfg.days; d++) {
-                  const dObj = new Date(cfg.year, cfg.month - 1, d);
-                  if (dObj.getDay() === targetWeekday) {
-                    matchCount++;
-                    if (matchCount === targetCount) {
-                      foundDay = d;
-                      break;
-                    }
-                  }
-                }
-              }
-
-              if (foundDay !== null) {
-                const hol = checkHoliday(cfg.year, cfg.month, foundDay);
-                let assignedDay = foundDay;
-
-                if (hol) {
-                  if (policy === "skip") return;
-                  if (policy === "postpone") {
-                    let curD = foundDay + 1;
-                    while (curD <= cfg.days) {
-                      const nextDObj = new Date(cfg.year, cfg.month - 1, curD);
-                      const ndow = nextDObj.getDay();
-                      const nhol = checkHoliday(cfg.year, cfg.month, curD);
-                      if (ndow !== 0 && ndow !== 6 && nhol === null) {
-                        assignedDay = curD;
-                        break;
-                      }
-                      curD++;
-                    }
-                  }
-                }
-
-                if (monthRecurringMap[assignedDay]) {
-                  monthRecurringMap[assignedDay].push({
-                    deptIndex: parseInt(item.deptIndex, 10),
-                    text: item.text.trim()
-                  });
-                }
-              }
-            }
-            return;
-          }
-
-          if (rawDay.startsWith("week-") || weeklyDayMap[rawDay] !== undefined) {
-            const wCode = rawDay.startsWith("week-") ? rawDay.replace("week-", "") : rawDay;
-            const targetWeekday = weeklyDayMap[wCode];
-
-            if (targetWeekday !== undefined) {
-              for (let d = 1; d <= cfg.days; d++) {
-                const dObj = new Date(cfg.year, cfg.month - 1, d);
-                if (dObj.getDay() === targetWeekday) {
-                  const hol = checkHoliday(cfg.year, cfg.month, d);
-                  if (hol) {
-                    if (policy === "skip") continue;
-                    if (policy === "postpone") {
-                      let curD = d + 1;
-                      while (curD <= cfg.days) {
-                        const nextDObj = new Date(cfg.year, cfg.month - 1, curD);
-                        const ndow = nextDObj.getDay();
-                        const nhol = checkHoliday(cfg.year, cfg.month, curD);
-                        if (ndow !== 0 && ndow !== 6 && nhol === null) {
-                          monthRecurringMap[curD].push({
-                            deptIndex: parseInt(item.deptIndex, 10),
-                            text: item.text.trim()
-                          });
-                          break;
-                        }
-                        curD++;
-                      }
-                      continue;
-                    }
-                  }
-                  monthRecurringMap[d].push({
-                    deptIndex: parseInt(item.deptIndex, 10),
-                    text: item.text.trim()
-                  });
-                }
-              }
-            }
-            return;
-          }
-
-          let cleanD = rawDay.replace("day-", "");
-          let targetDay = cleanD === "last" ? cfg.days : parseInt(cleanD, 10);
-          if (isNaN(targetDay) || targetDay < 1 || targetDay > cfg.days) return;
-
-          const targetDateObj = new Date(cfg.year, cfg.month - 1, targetDay);
-          const targetDow = targetDateObj.getDay();
-          const targetHol = checkHoliday(cfg.year, cfg.month, targetDay);
-          const isTargetOff = (targetDow === 0 || targetDow === 6 || targetHol !== null);
-
-          if (isTargetOff && policy === "skip") return;
-
-          let assignedDay = targetDay;
-          if (policy === "postpone" && isTargetOff) {
-            let curD = targetDay;
-            while (curD <= cfg.days) {
-              const dObj = new Date(cfg.year, cfg.month - 1, curD);
-              const dow = dObj.getDay();
-              const hol = checkHoliday(cfg.year, cfg.month, curD);
-              const isOff = (dow === 0 || dow === 6 || hol !== null);
-              if (!isOff) {
-                assignedDay = curD;
-                break;
-              }
-              curD++;
-            }
-            if (curD > cfg.days) assignedDay = targetDay;
-          }
-
-          if (monthRecurringMap[assignedDay]) {
-            monthRecurringMap[assignedDay].push({
-              deptIndex: parseInt(item.deptIndex, 10),
-              text: item.text.trim()
-            });
-          }
-        });
-
-        for (let day = 1; day <= cfg.days; day++) {
-          const rowKey = `${cfg.month}-${day}`;
-          if ((window.deletedRowKeys || []).includes(rowKey)) {
-            continue;
-          }
-
-          const dateObj = new Date(cfg.year, cfg.month - 1, day);
-          const dayOfWeekIdx = dateObj.getDay();
-          const dayOfWeekName = dayNames[dayOfWeekIdx];
-
-          const holidayName = checkHoliday(cfg.year, cfg.month, day);
-          const isWeekend = (dayOfWeekIdx === 0 || dayOfWeekIdx === 6);
-          const eventKey = `${cfg.month}-${day}`;
-          const inheritedEvent = (window.annualGridEvents && window.annualGridEvents[eventKey]) || "";
-          const isSchoolHoliday = isSchoolHolidayText(inheritedEvent);
-          const isOffDay = isWeekend || (holidayName !== null) || isSchoolHoliday;
-
+        buildPlanRows(cfg.year, cfg.month, currentPlanSource()).forEach(function(row) {
           const tr = document.createElement("tr");
-          tr.className = isOffDay ? "row-holiday" : "hover:bg-slate-50";
-          tr.dataset.rowKey = rowKey;
-
-          let dayBadgeClass = isOffDay ? "text-holiday-red" : "text-slate-800 font-normal";
-
-          const recurringMatches = monthRecurringMap[day] || [];
-          const firstColParts = [];
-
-          if (inheritedEvent && inheritedEvent.trim().length > 0) {
-            firstColParts.push(inheritedEvent.trim());
-          }
-
-          recurringMatches.filter(function(r) { return parseInt(r.deptIndex, 10) === 0; }).forEach(function(r) {
-            if (r.text && r.text.trim()) {
-              const cleanR = r.text.trim();
-              const combinedStr = firstColParts.join(" ");
-              if (!combinedStr.includes(cleanR)) {
-                firstColParts.push(cleanR);
-              }
-            }
-          });
-
-          if (holidayName && holidayName.trim().length > 0) {
-            const hName = holidayName.trim();
-            const cleanInherited = (inheritedEvent || "").replace(/\s+/g, "");
-            const cleanHoliday = hName.replace(/\s+/g, "");
-            const isAlreadyIncluded = cleanInherited.includes(cleanHoliday);
-            if (!isAlreadyIncluded) {
-              firstColParts.push(hName);
-            }
-          }
-
-          const firstColDefaultContent = formatWithDash(firstColParts.join("\n"));
+          tr.className = row.isOff ? "row-holiday" : "hover:bg-slate-50";
+          tr.dataset.rowKey = row.rowKey;
+          const dayBadgeClass = row.isOff ? "text-holiday-red" : "text-slate-800 font-normal";
 
           let cellsHtml = `
             <td class="no-print text-center px-1 bg-slate-50/70 border-r border-slate-300 py-0">
-              <input type="checkbox" class="row-select-checkbox cursor-pointer rounded accent-indigo-600" data-row-key="${rowKey}">
+              <input type="checkbox" class="row-select-checkbox cursor-pointer rounded accent-indigo-600" data-row-key="${row.rowKey}">
             </td>
-            <td class="text-center py-0 leading-none ${dayBadgeClass}">${day}</td>
-            <td class="text-center py-0 leading-none ${dayBadgeClass}">${dayOfWeekName}</td>
+            <td class="text-center py-0 leading-none ${dayBadgeClass}">${row.day}</td>
+            <td class="text-center py-0 leading-none ${dayBadgeClass}">${row.dowName}</td>
           `;
-
-          activeDepts.forEach(function(dept, dIdx) {
-            const cellId = `cell-${cfg.month}-${day}-${dIdx}`;
-            let cellContent = "";
-
-            if (window.scheduleGridCells && window.scheduleGridCells[cellId] !== undefined) {
-              cellContent = formatWithDash(window.scheduleGridCells[cellId]);
-            } else if (dIdx === 0) {
-              cellContent = firstColDefaultContent;
-            } else {
-              const deptRecurring = recurringMatches.filter(function(r) { return parseInt(r.deptIndex, 10) === dIdx; }).map(function(r) { return r.text.trim(); }).filter(Boolean);
-              cellContent = formatWithDash(deptRecurring.join("\n"));
-            }
-
-            const textStyle = (dIdx === 0 && (holidayName || isSchoolHoliday)) ? "text-rose-600 font-semibold" : "";
-            cellsHtml += `<td class="cell-editable px-1 py-0 whitespace-pre-wrap ${textStyle}" contenteditable="true" data-cell-id="${cellId}">${cellContent}</td>`;
+          row.cells.forEach(function(cell) {
+            const textStyle = cell.isHolidayText ? "text-rose-600 font-semibold" : "";
+            cellsHtml += `<td class="cell-editable px-1 py-0 whitespace-pre-wrap ${textStyle}" contenteditable="true" data-cell-id="${cell.cellId}">${escapeHtml(cell.text)}</td>`;
           });
 
           tr.innerHTML = cellsHtml;
           tbody.appendChild(tr);
-        }
+        });
       });
 
       const nextMonthPreviewCell = document.getElementById("nextMonthPreviewContent");
@@ -2950,12 +2890,9 @@
             rowHtml += `<td class="cell-disabled-day border-r border-slate-200"></td>
                         <td class="cell-disabled-day border-r border-slate-300"></td>`;
           } else {
-            const dObj = new Date(yr, m - 1, day);
-            const dow = dObj.getDay();
-            const dowName = dayNames[dow];
-            const holiday = checkHoliday(yr, m, day);
-            const isWeekend = (dow === 0 || dow === 6);
-            const isOff = isWeekend || (holiday !== null);
+            const info = getDayInfo(yr, m, day);
+            const dowName = info.dowName;
+            const isOff = info.isOff;
 
             const dowClass = isOff ? "cell-weekend-holiday font-bold text-rose-600" : "text-slate-600";
             const eventKey = `${m}-${day}`;
@@ -3574,7 +3511,6 @@
       const y = parseInt(year, 10) || window.currentSchoolYear;
       const m = parseInt(month, 10) || 10;
       const actualCalYear = (m === 1 || m === 2) ? y + 1 : y;
-      const totalDays = getDaysInMonth(actualCalYear, m);
 
       // 공유 아카이브를 먼저 조회하고, 없으면 이 브라우저의 이전 저장 자료를 사용합니다.
       let confirmedData = null;
@@ -3634,156 +3570,6 @@
       }
       const deptCount = activeDepts.length || 1;
 
-      // 정기일정 매핑
-      const monthRecurringMap = {};
-      for (let d = 1; d <= totalDays; d++) {
-        monthRecurringMap[d] = [];
-      }
-      const weeklyDayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
-
-      (window.recurringEvents || []).forEach(function(item) {
-        if (item.enabled === false || !item.text || !item.text.trim()) return;
-        const policy = item.holidayPolicy || "postpone";
-        const rawDay = String(item.day || "day-1").trim();
-
-        if (rawDay.startsWith("nth-")) {
-          const parts = rawDay.split("-");
-          const nthTarget = parts[1];
-          const wDayCode = parts[2];
-          const targetWeekday = weeklyDayMap[wDayCode];
-
-          if (targetWeekday !== undefined) {
-            let matchCount = 0;
-            let foundDay = null;
-
-            if (nthTarget === "last") {
-              for (let d = totalDays; d >= 1; d--) {
-                const dObj = new Date(actualCalYear, m - 1, d);
-                if (dObj.getDay() === targetWeekday) {
-                  foundDay = d;
-                  break;
-                }
-              }
-            } else {
-              const targetCount = parseInt(nthTarget, 10);
-              for (let d = 1; d <= totalDays; d++) {
-                const dObj = new Date(actualCalYear, m - 1, d);
-                if (dObj.getDay() === targetWeekday) {
-                  matchCount++;
-                  if (matchCount === targetCount) {
-                    foundDay = d;
-                    break;
-                  }
-                }
-              }
-            }
-
-            if (foundDay !== null) {
-              const hol = checkHoliday(actualCalYear, m, foundDay);
-              let assignedDay = foundDay;
-
-              if (hol) {
-                if (policy === "skip") return;
-                if (policy === "postpone") {
-                  let curD = foundDay + 1;
-                  while (curD <= totalDays) {
-                    const nextDObj = new Date(actualCalYear, m - 1, curD);
-                    const ndow = nextDObj.getDay();
-                    const nhol = checkHoliday(actualCalYear, m, curD);
-                    if (ndow !== 0 && ndow !== 6 && nhol === null) {
-                      assignedDay = curD;
-                      break;
-                    }
-                    curD++;
-                  }
-                }
-              }
-
-              if (monthRecurringMap[assignedDay]) {
-                monthRecurringMap[assignedDay].push({
-                  deptIndex: parseInt(item.deptIndex, 10),
-                  text: item.text.trim()
-                });
-              }
-            }
-          }
-          return;
-        }
-
-        if (rawDay.startsWith("week-") || weeklyDayMap[rawDay] !== undefined) {
-          const wCode = rawDay.startsWith("week-") ? rawDay.replace("week-", "") : rawDay;
-          const targetWeekday = weeklyDayMap[wCode];
-
-          if (targetWeekday !== undefined) {
-            for (let d = 1; d <= totalDays; d++) {
-              const dObj = new Date(actualCalYear, m - 1, d);
-              if (dObj.getDay() === targetWeekday) {
-                const hol = checkHoliday(actualCalYear, m, d);
-                if (hol) {
-                  if (policy === "skip") continue;
-                  if (policy === "postpone") {
-                    let curD = d + 1;
-                    while (curD <= totalDays) {
-                      const nextDObj = new Date(actualCalYear, m - 1, curD);
-                      const ndow = nextDObj.getDay();
-                      const nhol = checkHoliday(actualCalYear, m, curD);
-                      if (ndow !== 0 && ndow !== 6 && nhol === null) {
-                        monthRecurringMap[curD].push({
-                          deptIndex: parseInt(item.deptIndex, 10),
-                          text: item.text.trim()
-                        });
-                        break;
-                      }
-                      curD++;
-                    }
-                    continue;
-                  }
-                }
-                monthRecurringMap[d].push({
-                  deptIndex: parseInt(item.deptIndex, 10),
-                  text: item.text.trim()
-                });
-              }
-            }
-          }
-          return;
-        }
-
-        let cleanD = rawDay.replace("day-", "");
-        let targetDay = cleanD === "last" ? totalDays : parseInt(cleanD, 10);
-        if (isNaN(targetDay) || targetDay < 1 || targetDay > totalDays) return;
-
-        const targetDateObj = new Date(actualCalYear, m - 1, targetDay);
-        const targetDow = targetDateObj.getDay();
-        const targetHol = checkHoliday(actualCalYear, m, targetDay);
-        const isTargetOff = (targetDow === 0 || targetDow === 6 || targetHol !== null);
-
-        if (isTargetOff && policy === "skip") return;
-
-        let assignedDay = targetDay;
-        if (policy === "postpone" && isTargetOff) {
-          let curD = targetDay;
-          while (curD <= totalDays) {
-            const dObj = new Date(actualCalYear, m - 1, curD);
-            const dow = dObj.getDay();
-            const hol = checkHoliday(actualCalYear, m, curD);
-            if (dow !== 0 && dow !== 6 && hol === null) {
-              assignedDay = curD;
-              break;
-            }
-            curD++;
-          }
-          if (curD > totalDays) assignedDay = targetDay;
-        }
-
-        if (monthRecurringMap[assignedDay]) {
-          monthRecurringMap[assignedDay].push({
-            deptIndex: parseInt(item.deptIndex, 10),
-            text: item.text.trim()
-          });
-        }
-      });
-
       // 테이블 헤더 컬럼 생성
       let thCols = `<th class="w-10 text-center py-1">날짜</th><th class="w-12 text-center py-1">요일</th>`;
       activeDepts.forEach(function(dName, dIdx) {
@@ -3798,59 +3584,20 @@
 
       // 일별 행 생성
       let rowsHtml = "";
-      for (let day = 1; day <= totalDays; day++) {
-        const rowKey = `${m}-${day}`;
-        if (targetDeletedKeys.includes(rowKey)) continue;
-
-        const dateObj = new Date(actualCalYear, m - 1, day);
-        const dowIdx = dateObj.getDay();
-        const dowName = dayNames[dowIdx];
-
-        const holidayName = checkHoliday(actualCalYear, m, day);
-        const isWeekend = (dowIdx === 0 || dowIdx === 6);
-        const inheritedEvent = (targetAnnualEvents && targetAnnualEvents[rowKey]) || "";
-        const isSchoolHoliday = isSchoolHolidayText(inheritedEvent);
-        const isOffDay = isWeekend || (holidayName !== null) || isSchoolHoliday;
-
-        const rowBg = isOffDay ? "row-holiday" : "hover:bg-slate-50";
-        const dayClass = isOffDay ? "text-holiday-red" : "text-slate-800 font-normal";
-
-        const recurringMatches = monthRecurringMap[day] || [];
-        const firstColParts = [];
-        if (inheritedEvent && inheritedEvent.trim().length > 0) firstColParts.push(inheritedEvent.trim());
-        recurringMatches.filter(function(r) { return parseInt(r.deptIndex, 10) === 0; }).forEach(function(r) {
-          if (r.text && r.text.trim() && !firstColParts.join(" ").includes(r.text.trim())) firstColParts.push(r.text.trim());
-        });
-        if (holidayName && holidayName.trim().length > 0 && !(inheritedEvent || "").includes(holidayName.trim())) {
-          firstColParts.push(holidayName.trim());
-        }
-
-        const firstColDefault = formatWithDash(firstColParts.join("\n"));
-
+      buildPlanRows(actualCalYear, m, {
+        departments: activeDepts, cells: targetCells, annualEvents: targetAnnualEvents, deletedKeys: targetDeletedKeys
+      }).forEach(function(row) {
+        const dayClass = row.isOff ? "text-holiday-red" : "text-slate-800 font-normal";
         let tdCols = `
-          <td class="text-center py-0.5 leading-none ${dayClass}">${day}</td>
-          <td class="text-center py-0.5 leading-none ${dayClass}">${dowName}</td>
+          <td class="text-center py-0.5 leading-none ${dayClass}">${row.day}</td>
+          <td class="text-center py-0.5 leading-none ${dayClass}">${row.dowName}</td>
         `;
-
-        activeDepts.forEach(function(dept, dIdx) {
-          const cellId = `cell-${m}-${day}-${dIdx}`;
-          let cellContent = "";
-
-          if (targetCells && targetCells[cellId] !== undefined) {
-            cellContent = formatWithDash(targetCells[cellId]);
-          } else if (dIdx === 0) {
-            cellContent = firstColDefault;
-          } else {
-            const deptRecurring = recurringMatches.filter(function(r) { return parseInt(r.deptIndex, 10) === dIdx; }).map(function(r) { return r.text.trim(); }).filter(Boolean);
-            cellContent = formatWithDash(deptRecurring.join("\n"));
-          }
-
-          const textStyle = (dIdx === 0 && (holidayName || isSchoolHoliday)) ? "text-rose-600 font-semibold" : "";
-          tdCols += `<td class="px-1.5 py-0.5 whitespace-pre-wrap ${textStyle}">${cellContent}</td>`;
+        row.cells.forEach(function(cell) {
+          const textStyle = cell.isHolidayText ? "text-rose-600 font-semibold" : "";
+          tdCols += `<td class="px-1.5 py-0.5 whitespace-pre-wrap ${textStyle}">${escapeHtml(cell.text)}</td>`;
         });
-
-        rowsHtml += `<tr class="${rowBg}">${tdCols}</tr>`;
-      }
+        rowsHtml += `<tr class="${row.isOff ? "row-holiday" : "hover:bg-slate-50"}">${tdCols}</tr>`;
+      });
 
       // 다음 달 예고
       const nextMonthSummary = getNextMonthEventsSummary(y, String(m));
