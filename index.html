@@ -125,6 +125,12 @@
     .approval-table th, .approval-table td {
       border: 1px solid #334155;
     }
+    /* 창이 좁으면 메뉴+A4 화면 전체를 축소해 잘리지 않게 표시 (인쇄에는 적용 안 함) */
+    @media screen {
+      #mainContainerSet {
+        zoom: var(--fit-zoom, 1);
+      }
+    }
     @media print {
       @page {
         size: A4 portrait;
@@ -3930,6 +3936,24 @@
       }
     }
 
+    // 창 너비에 맞춰 화면 배율 조정 (필요한 너비보다 창이 좁을 때만 축소)
+    function fitLayoutToWindow() {
+      const container = document.getElementById("mainContainerSet");
+      if (!container) return;
+      const root = document.documentElement;
+      root.style.setProperty("--fit-zoom", "1");
+      const wrapperStyle = getComputedStyle(container.parentElement);
+      const needed = container.scrollWidth + parseFloat(wrapperStyle.paddingLeft) + parseFloat(wrapperStyle.paddingRight);
+      const available = root.clientWidth;
+      const zoom = available < needed ? Math.max(0.4, available / needed) : 1;
+      root.style.setProperty("--fit-zoom", zoom.toFixed(3));
+    }
+    let fitLayoutFrame = 0;
+    window.addEventListener("resize", function() {
+      cancelAnimationFrame(fitLayoutFrame);
+      fitLayoutFrame = requestAnimationFrame(fitLayoutToWindow);
+    });
+
     // Application Lifecycle Entrypoint
     window.onload = function () {
       initMonthPillsEvents();
@@ -3947,6 +3971,7 @@
       hideAllPages();
       if (guidePageContainer) guidePageContainer.classList.remove("hidden");
       resetSubMenuStyles();
+      fitLayoutToWindow();
       window.appInitialized = true;
       if (window.firebaseAuthClient) window.firebaseAuthClient.start();
     };
