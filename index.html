@@ -64,9 +64,9 @@
       line-height: 1.08;
       padding: 0.5px 3px;
     }
-    /* "- 항목"이 자동 줄바꿈되면 다음 줄을 "- " 너비만큼 들여써서 글자 시작 위치를 맞춤 */
+    /* "-항목"이 자동 줄바꿈되면 다음 줄을 "-" 너비만큼 들여써서 글자 시작 위치를 맞춤 */
     .plan-grid td.whitespace-pre-wrap {
-      text-indent: 0.63em hanging each-line;
+      text-indent: 0.37em hanging each-line;
     }
     .text-holiday-red {
       color: #dc2626 !important;
@@ -1263,8 +1263,9 @@
       return text.split(/\r?\n/).map(function(line) {
         const trimmed = line.trim();
         if (!trimmed) return "";
-        if (trimmed.startsWith("-") || trimmed.startsWith("·") || trimmed.startsWith("*")) return trimmed;
-        return `- ${trimmed}`;
+        if (trimmed.startsWith("-")) return "-" + trimmed.slice(1).trimStart();
+        if (trimmed.startsWith("·") || trimmed.startsWith("*")) return trimmed;
+        return `-${trimmed}`;
       }).filter(Boolean).join("\n");
     }
 
