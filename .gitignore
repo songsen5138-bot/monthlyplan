@@ -4,6 +4,9 @@ backup/
 # 계정 정보 등 개인 메모는 GitHub에 올리지 않음
 *.txt
 
+# 소개 영상은 이 컴퓨터에만 보관
+영상/
+
 # Firebase 도구가 만드는 임시 파일
 .firebase/
 *-debug.log
