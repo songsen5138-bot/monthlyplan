@@ -2,10 +2,7 @@
   "hosting": {
     "public": ".",
     "ignore": [
-      "firebase.json",
-      ".firebaserc",
-      ".gitignore",
-      "README.md",
+      "**/*.!(html)",
       "backup/**",
       ".git/**",
       ".firebase/**",

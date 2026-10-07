@@ -1,6 +1,9 @@
 # 원본 백업(4.6MB)은 이 컴퓨터에만 보관
 backup/
 
+# 계정 정보 등 개인 메모는 GitHub에 올리지 않음
+*.txt
+
 # Firebase 도구가 만드는 임시 파일
 .firebase/
 *-debug.log
