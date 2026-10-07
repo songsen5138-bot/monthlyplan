@@ -129,6 +129,72 @@
     .approval-table th, .approval-table td {
       border: 1px solid #334155;
     }
+    /* 화면에서는 계획표 글씨를 읽기 좋게 크게, 인쇄할 때는 A4 한 장에 맞게 작게 (인쇄 크기는 아래 @media print) */
+    .plan-grid td.cell-editable {
+      font-size: 11px !important;
+      line-height: 1.25;
+    }
+    /* 버튼: 주요 동작(확정)은 대표색, 나머지는 흰색 */
+    .btn-sub, .btn-main {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+    .btn-sub {
+      background: #ffffff;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+    .btn-sub:hover {
+      background: #f8fafc;
+      border-color: #94a3b8;
+    }
+    .btn-main {
+      background: #4f46e5;
+      color: #ffffff;
+      border: 1px solid #4f46e5;
+      box-shadow: 0 1px 2px rgba(79, 70, 229, 0.3);
+    }
+    .btn-main:hover {
+      background: #4338ca;
+    }
+    .btn-sub.hidden, .btn-main.hidden {
+      display: none;
+    }
+    #mobilePlanList {
+      display: none;
+    }
+    /* 휴대폰: 메뉴를 위에 두고, 계획표 대신 날짜별 목록으로 표시 */
+    @media screen and (max-width: 639px) {
+      #mainContainerSet {
+        align-items: stretch !important;
+        width: 100%;
+      }
+      #sidebarNav {
+        position: static !important;
+        width: 100% !important;
+      }
+      #rightWorkspaceContainer {
+        width: 100%;
+      }
+      .a4-page {
+        width: 100% !important;
+        min-height: auto !important;
+        padding: 14px !important;
+      }
+      #scheduleGridTable {
+        display: none;
+      }
+      #mobilePlanList {
+        display: block;
+      }
+    }
     /* 창이 좁으면 메뉴+A4 화면 전체를 축소해 잘리지 않게 표시 (인쇄에는 적용 안 함) */
     @media screen {
       #mainContainerSet {
@@ -163,8 +229,12 @@
         line-height: 1.1 !important;
       }
       .plan-grid td.cell-editable {
+        font-size: 9px !important;
         padding: 0.5px 2px !important;
         line-height: 1.05 !important;
+      }
+      #mobilePlanList {
+        display: none !important;
       }
       .text-holiday-red {
         color: #dc2626 !important;
@@ -229,7 +299,7 @@
                     <span id="baseConfigBadge" class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-md font-bold">관리</span>
                   </button>
 
-                  <div id="baseConfigSubMenu" class="pl-5 pr-1 space-y-1 py-1">
+                  <div id="baseConfigSubMenu" class="admin-only hidden pl-5 pr-1 space-y-1 py-1">
                     <button id="btnSubConfigCredentials" class="w-full flex items-center px-3 py-1.5 rounded-lg text-[11px] hover:bg-rose-50 hover:text-rose-800 transition border border-transparent hover:border-rose-100 cursor-pointer text-slate-600 font-medium">
                       <i class="fa-solid fa-user-lock text-[10px] mr-2 text-rose-600 w-3 text-center"></i>
                       <span>아이디·비밀번호 변경</span>
@@ -313,28 +383,29 @@
                 <i class="fa-solid fa-square-check text-indigo-500 mr-1"></i>선택한 날짜 행을 계획표에서 숨기거나 삭제할 수 있습니다.
               </span>
               <div class="ml-auto flex flex-wrap items-center justify-end gap-1.5">
-                <button type="button" id="btnDeleteSelectedRows" class="admin-only hidden px-2.5 py-1 text-[11px] font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-lg transition flex items-center gap-1 cursor-pointer">
-                  <i class="fa-regular fa-trash-can text-xs"></i>
+                <button type="button" id="btnDeleteSelectedRows" class="admin-only hidden btn-sub">
+                  <i class="fa-regular fa-trash-can text-xs text-rose-500"></i>
                   <span>행 삭제</span>
                 </button>
-                <button type="button" id="btnResetDeletedRows" class="admin-only hidden px-2.5 py-1 text-[11px] font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200 rounded-lg transition flex items-center gap-1 cursor-pointer">
-                  <i class="fa-solid fa-arrow-rotate-left text-xs"></i>
+                <button type="button" id="btnResetDeletedRows" class="admin-only hidden btn-sub">
+                  <i class="fa-solid fa-arrow-rotate-left text-xs text-slate-500"></i>
                   <span>행 복원</span>
                 </button>
-                <button type="button" id="btnPrintCurrentPage" class="px-3 py-1 text-[11px] font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer">
-                  <i class="fa-solid fa-print text-xs"></i>
+                <button type="button" id="btnPrintCurrentPage" class="btn-sub">
+                  <i class="fa-solid fa-print text-xs text-slate-500"></i>
                   <span>인쇄</span>
                 </button>
-                <button type="button" id="btnConfirmPlanSchedule" class="admin-only hidden px-3 py-1 text-[11px] font-bold bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer" title="현재 작성된 월중 교육활동 계획을 최종 저장하고 확정합니다">
+                <button type="button" id="btnExportCurrentPlanHwpx" class="admin-only hidden btn-sub" title="현재 교육활동 계획을 학교 양식의 한글 문서(HWPX)로 내려받습니다">
+                  <i class="fa-solid fa-file-arrow-down text-xs text-sky-600"></i>
+                  <span>한글 내려받기</span>
+                </button>
+                <button type="button" id="btnConfirmPlanSchedule" class="admin-only hidden btn-main" title="현재 작성된 월중 교육활동 계획을 최종 저장하고 확정합니다">
                   <i class="fa-solid fa-check text-xs"></i>
                   <span>확정</span>
                 </button>
-                <button type="button" id="btnExportCurrentPlanExcel" class="admin-only hidden px-3 py-1 text-[11px] font-bold bg-teal-600 hover:bg-teal-700 text-white rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer" title="현재 교육활동 계획을 엑셀 파일로 다운로드합니다">
-                  <i class="fa-solid fa-file-excel text-xs"></i>
-                  <span>엑셀다운</span>
-                </button>
               </div>
             </div>
+            <div id="planInputStatusBar" class="mt-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-[11px] text-slate-700 flex flex-wrap items-center gap-x-3 gap-y-1.5"></div>
             <div class="mt-2 border-t border-dotted border-slate-300"></div>
           </div>
           
@@ -375,7 +446,8 @@
           </table>
 
           <!-- Main Schedule Grid Table -->
-          <table class="plan-grid w-full border-collapse border border-slate-700 text-[11px] mb-3">
+          <div id="mobilePlanList" class="no-print mb-3"></div>
+          <table id="scheduleGridTable" class="plan-grid w-full border-collapse border border-slate-700 text-[11px] mb-3">
             <thead>
               <tr id="scheduleTableHeaderRow" class="bg-slate-200 text-slate-900 text-center font-bold">
           <th class="w-7 no-print text-center px-1">
@@ -760,6 +832,25 @@
                   </div>
                 </div>
 
+                <div class="mb-4 bg-white border border-rose-200 rounded-xl p-3.5 shadow-2xs">
+                  <div class="flex flex-wrap items-center gap-2 mb-2 pb-1.5 border-b border-rose-100">
+                    <span class="w-5 h-5 rounded-md bg-rose-500 text-white flex items-center justify-center text-[10px] shadow-xs">
+                      <i class="fa-solid fa-calendar-plus"></i>
+                    </span>
+                    <span class="font-extrabold text-slate-900 text-sm">추가 공휴일</span>
+                    <span class="text-[12px] text-slate-500">선거일·임시공휴일처럼 새로 지정된 휴일을 넣으면 계획표에 빨간색 휴일로 표시됩니다.</span>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <input type="date" id="extraHolidayDate" class="border border-slate-300 rounded-lg px-2 py-1 text-xs font-semibold text-slate-800 bg-white">
+                    <input type="text" id="extraHolidayName" maxlength="20" class="flex-1 min-w-[160px] border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800 bg-white" placeholder="예: 국회의원 선거일">
+                    <button type="button" id="btnAddExtraHoliday" class="btn-main">
+                      <i class="fa-solid fa-plus text-[10px]"></i>
+                      <span>추가</span>
+                    </button>
+                  </div>
+                  <div id="extraHolidayList" class="mt-2 flex flex-wrap gap-1.5"></div>
+                </div>
+
                 <div class="flex flex-col sm:flex-row justify-start items-start sm:items-center gap-2 mb-3">
                   <div class="flex items-center gap-1.5 bg-slate-200 p-1 rounded-lg">
                     <button type="button" id="btnSem1Tab" class="px-3 py-1 rounded-md bg-white text-indigo-700 shadow-xs transition font-bold cursor-pointer">1학기 (3~8월)</button>
@@ -1034,6 +1125,9 @@
     window.annualGridEvents = {};
     window.scheduleGridCells = {};
     window.deletedRowKeys = [];
+    window.extraHolidays = {};      // 관리자 추가 공휴일 { "2028-04-12": "국회의원 선거일" }
+    window.inputDeadlines = {};     // 입력 마감일 { "2026_10": "2026-09-25" }
+    window.deptInputStatus = {};    // 부서별 입력 완료 { "2026_10": { "0": { done, by, at } } }
     window.isAdminAuthenticated = false;
     window.isFirebaseAuthenticated = false;
     window.firebaseUser = null;
@@ -1143,6 +1237,12 @@
 
     const holidayMapCache = {};
 
+    // 추가 공휴일이 바뀌면 계산해 둔 공휴일 표를 다시 만들도록 비움
+    function resetHolidayCache() {
+      Object.keys(holidayMapCache).forEach(function(year) { delete holidayMapCache[year]; });
+    }
+    window.resetHolidayCache = resetHolidayCache;
+
     function holidayDateKey(date) {
       return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
     }
@@ -1178,10 +1278,11 @@
         addLunar(lunar.chuseok, "추석 연휴", "sunday", 1);
       }
 
-      Object.keys(SPECIAL_HOLIDAYS).forEach(function(key) {
+      const specialHolidays = Object.assign({}, SPECIAL_HOLIDAYS, window.extraHolidays || {});
+      Object.keys(specialHolidays).forEach(function(key) {
         if (key.indexOf(year + "-") === 0) {
           const parts = key.split("-").map(Number);
-          add(parts[1], parts[2], SPECIAL_HOLIDAYS[key]);
+          add(parts[1], parts[2], specialHolidays[key]);
         }
       });
 
@@ -1944,6 +2045,7 @@
       tbody.innerHTML = "";
 
       const monthConfigs = parseMultiMonthList(window.currentSchoolYear, sortedMonths);
+      const allRows = [];
 
       monthConfigs.forEach(function(cfg) {
         if (monthConfigs.length > 1) {
@@ -1958,6 +2060,7 @@
         }
 
         buildPlanRows(cfg.year, cfg.month, currentPlanSource()).forEach(function(row) {
+          allRows.push(row);
           const tr = document.createElement("tr");
           tr.className = row.isOff ? "row-holiday" : "hover:bg-slate-50";
           tr.dataset.rowKey = row.rowKey;
@@ -1986,8 +2089,176 @@
         nextMonthPreviewCell.innerHTML = getNextMonthEventsSummary(window.currentSchoolYear, lastMonth);
       }
 
+      renderMobilePlanList(allRows, activeDepts);
+      renderInputStatusBar();
       setupEditableListeners();
     };
+
+    // 휴대폰용: 일정이 있는 날만 날짜별 목록으로 표시 (보기 전용)
+    function renderMobilePlanList(rows, depts) {
+      const box = document.getElementById("mobilePlanList");
+      if (!box) return;
+      const items = rows.map(function(row) {
+        const entries = row.cells.filter(function(cell) { return cell.text.trim(); }).map(function(cell) {
+          return `<div class="flex gap-2 py-0.5">
+              <span class="flex-shrink-0 w-24 text-[12px] font-bold text-slate-500">${escapeHtml(depts[cell.deptIndex] || "")}</span>
+              <span class="flex-1 text-[13px] whitespace-pre-wrap ${cell.isHolidayText ? "text-rose-600 font-semibold" : "text-slate-800"}">${escapeHtml(cell.text)}</span>
+            </div>`;
+        }).join("");
+        if (!entries) return "";
+        return `<div class="py-2 border-b border-slate-200">
+            <div class="text-[13px] font-extrabold ${row.isOff ? "text-rose-600" : "text-slate-900"}">${row.month}월 ${row.day}일 (${row.dowName})</div>
+            ${entries}
+          </div>`;
+      }).join("");
+      box.innerHTML = (items || `<p class="text-[13px] text-slate-500 py-3">등록된 일정이 없습니다.</p>`) +
+        `<p class="text-[12px] text-slate-500 pt-3"><i class="fa-solid fa-mobile-screen mr-1"></i>휴대폰에서는 보기만 할 수 있습니다. 입력은 PC 화면에서 해 주세요.</p>`;
+    }
+
+    // ---------- 입력 마감일·부서별 입력 완료 ----------
+    function currentPlanKey() {
+      const order = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "1", "2"];
+      const months = (window.selectedPlanMonths || ["10"]).map(String).sort(function(a, b) { return order.indexOf(a) - order.indexOf(b); });
+      return `${window.currentSchoolYear}_${months.join("-")}`;
+    }
+
+    function daysUntil(dateStr) {
+      const parts = dateStr.split("-").map(Number);
+      const target = new Date(parts[0], parts[1] - 1, parts[2]);
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      return Math.round((target - today) / 86400000);
+    }
+
+    function pendingDepartments() {
+      const status = (window.deptInputStatus || {})[currentPlanKey()] || {};
+      return getActiveDepartments().filter(function(name, idx) { return !(status[idx] && status[idx].done); });
+    }
+
+    function renderInputStatusBar() {
+      const bar = document.getElementById("planInputStatusBar");
+      if (!bar) return;
+      const key = currentPlanKey();
+      const deadline = (window.inputDeadlines || {})[key] || "";
+      const status = (window.deptInputStatus || {})[key] || {};
+      const depts = getActiveDepartments();
+      const left = deadline ? daysUntil(deadline) : null;
+      const overdue = left !== null && left < 0;
+
+      let deadlineHtml;
+      if (window.isAdminAuthenticated) {
+        deadlineHtml = `<label class="inline-flex items-center gap-1.5 font-bold text-slate-800"><i class="fa-regular fa-calendar text-indigo-500"></i>입력 마감
+            <input type="date" id="inputDeadlineDate" value="${deadline}" class="border border-slate-300 rounded-md px-1.5 py-0.5 text-[11px] font-semibold bg-white"></label>`;
+      } else if (deadline) {
+        const p = deadline.split("-").map(Number);
+        deadlineHtml = `<span class="font-bold text-slate-800"><i class="fa-regular fa-calendar text-indigo-500 mr-1"></i>입력 마감 ${p[1]}월 ${p[2]}일(${dayNames[new Date(p[0], p[1] - 1, p[2]).getDay()]})</span>`;
+      } else {
+        deadlineHtml = `<span class="text-slate-400"><i class="fa-regular fa-calendar mr-1"></i>입력 마감일 미정</span>`;
+      }
+      let dDayHtml = "";
+      if (left !== null) {
+        const label = left > 0 ? `D-${left}` : left === 0 ? "오늘 마감" : "마감 지남";
+        const color = left > 2 ? "bg-indigo-100 text-indigo-800" : left >= 0 ? "bg-amber-100 text-amber-800" : "bg-rose-100 text-rose-700";
+        dDayHtml = `<span class="px-1.5 py-0.5 rounded-md font-extrabold ${color}">${label}</span>`;
+      }
+
+      const chips = depts.map(function(name, idx) {
+        const st = status[idx];
+        const done = Boolean(st && st.done);
+        const cls = done ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+          : overdue ? "bg-rose-50 text-rose-700 border-rose-300" : "bg-white text-slate-500 border-slate-300";
+        const icon = done ? "fa-solid fa-circle-check text-emerald-600" : "fa-regular fa-circle text-slate-400";
+        const tip = done ? `입력 완료${st.by ? " · " + st.by : ""}${st.at ? " · " + new Date(st.at).toLocaleString() : ""} (다시 누르면 취소)` : "입력을 마쳤으면 눌러서 완료로 표시하세요";
+        return `<button type="button" class="dept-status-chip inline-flex items-center gap-1 px-2 py-0.5 rounded-full border font-bold cursor-pointer ${cls}" data-dept-index="${idx}" title="${escapeHtml(tip)}"><i class="${icon} text-[10px]"></i>${escapeHtml(name)}</button>`;
+      }).join("");
+      const doneCount = depts.filter(function(name, idx) { return status[idx] && status[idx].done; }).length;
+
+      bar.innerHTML = `${deadlineHtml}${dDayHtml}
+        <span class="w-px h-4 bg-slate-300"></span>
+        <span class="font-bold text-slate-600">부서별 입력</span>${chips}
+        <span class="ml-auto font-extrabold ${doneCount === depts.length ? "text-emerald-700" : "text-slate-600"}">${doneCount}/${depts.length} 완료</span>`;
+
+      const dateInput = document.getElementById("inputDeadlineDate");
+      if (dateInput) {
+        dateInput.addEventListener("change", function() {
+          if (!window.isAdminAuthenticated) return;
+          if (this.value) window.inputDeadlines[key] = this.value;
+          else delete window.inputDeadlines[key];
+          if (window.saveSharedConfig) window.saveSharedConfig();
+          renderInputStatusBar();
+          showToast(this.value ? "입력 마감일을 정했습니다." : "입력 마감일을 지웠습니다.");
+        });
+      }
+      bar.querySelectorAll(".dept-status-chip").forEach(function(chip) {
+        chip.addEventListener("click", function() {
+          if (!window.isFirebaseAuthenticated) {
+            openAdminLoginModal("plan");
+            return;
+          }
+          const idx = this.dataset.deptIndex;
+          if (!window.deptInputStatus[key]) window.deptInputStatus[key] = {};
+          const wasDone = Boolean(window.deptInputStatus[key][idx] && window.deptInputStatus[key][idx].done);
+          const value = wasDone ? null : { done: true, by: (window.firebaseUser && window.firebaseUser.email) || "", at: new Date().toISOString() };
+          if (value) window.deptInputStatus[key][idx] = value;
+          else delete window.deptInputStatus[key][idx];
+          if (window.saveSharedPlanField) window.saveSharedPlanField(`deptStatus/${key}/${idx}`, value);
+          renderInputStatusBar();
+          showToast(`${depts[idx]} ${wasDone ? "입력 완료를 취소했습니다." : "입력 완료로 표시했습니다."}`);
+        });
+      });
+    }
+    window.renderInputStatusBar = renderInputStatusBar;
+
+    // ---------- 추가 공휴일 목록 ----------
+    function renderExtraHolidayList() {
+      const list = document.getElementById("extraHolidayList");
+      if (!list) return;
+      const keys = Object.keys(window.extraHolidays || {}).sort();
+      if (!keys.length) {
+        list.innerHTML = `<span class="text-[12px] text-slate-400">추가한 공휴일이 없습니다.</span>`;
+        return;
+      }
+      list.innerHTML = keys.map(function(key) {
+        const p = key.split("-").map(Number);
+        return `<span class="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-[12px] font-bold text-rose-700">
+            ${p[0]}. ${p[1]}. ${p[2]}.(${dayNames[new Date(p[0], p[1] - 1, p[2]).getDay()]}) ${escapeHtml(window.extraHolidays[key])}
+            <button type="button" class="extra-holiday-remove w-5 h-5 rounded-full hover:bg-rose-200 cursor-pointer" data-key="${key}" title="삭제"><i class="fa-solid fa-xmark text-[10px]"></i></button>
+          </span>`;
+      }).join("");
+      list.querySelectorAll(".extra-holiday-remove").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          delete window.extraHolidays[this.dataset.key];
+          afterExtraHolidayChange("추가 공휴일을 삭제했습니다.");
+        });
+      });
+    }
+    window.renderExtraHolidayList = renderExtraHolidayList;
+
+    function afterExtraHolidayChange(message) {
+      resetHolidayCache();
+      renderExtraHolidayList();
+      if (typeof window.renderAnnualMatrixTable === "function") window.renderAnnualMatrixTable();
+      window.renderMonthlyPlan();
+      if (window.saveSharedConfig) window.saveSharedConfig();
+      showToast(message);
+    }
+
+    const btnAddExtraHoliday = document.getElementById("btnAddExtraHoliday");
+    if (btnAddExtraHoliday) {
+      btnAddExtraHoliday.addEventListener("click", function() {
+        const dateEl = document.getElementById("extraHolidayDate");
+        const nameEl = document.getElementById("extraHolidayName");
+        const date = dateEl ? dateEl.value : "";
+        const name = nameEl ? nameEl.value.trim() : "";
+        if (!date || !name) {
+          showToast("날짜와 공휴일 이름을 모두 입력해 주세요.");
+          return;
+        }
+        window.extraHolidays[date] = name;
+        if (nameEl) nameEl.value = "";
+        afterExtraHolidayChange(`${name}(${date})을 공휴일로 추가했습니다.`);
+      });
+    }
 
     function getNextMonthEventsSummary(schoolYear, currentMonthStr) {
       let targetMonth;
@@ -2195,6 +2466,7 @@
       document.querySelectorAll(".admin-only").forEach(function(el) {
         el.classList.toggle("hidden", !window.isAdminAuthenticated);
       });
+      renderInputStatusBar();
       // 검색 화면이 열려 있으면 관리자 전용 버튼 표시 여부를 다시 반영
       const searchPage = document.getElementById("searchPastPageContainer");
       if (searchPage && !searchPage.classList.contains("hidden")) executePastPlansSearch();
@@ -2524,6 +2796,7 @@
           btnSubConfigEvents.classList.remove("text-slate-600", "font-medium");
         }
         window.renderAnnualMatrixTable();
+        renderExtraHolidayList();
       } else if (sectionKey === "recurring") {
         if (secRecurring) secRecurring.classList.remove("hidden");
         if (titleEl) titleEl.textContent = "정기일정";
@@ -3265,6 +3538,9 @@
           recurringEvents: window.recurringEvents,
           deletedRowKeys: window.deletedRowKeys,
           scheduleGridCells: window.scheduleGridCells,
+          extraHolidays: window.extraHolidays,
+          inputDeadlines: window.inputDeadlines,
+          deptInputStatus: window.deptInputStatus,
           exportedAt: new Date().toISOString()
         };
         const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
@@ -3309,6 +3585,9 @@
             if (parsed.recurringEvents) window.recurringEvents = parsed.recurringEvents;
             if (parsed.deletedRowKeys) window.deletedRowKeys = parsed.deletedRowKeys;
             if (parsed.scheduleGridCells) window.scheduleGridCells = parsed.scheduleGridCells;
+            if (parsed.extraHolidays) { window.extraHolidays = parsed.extraHolidays; resetHolidayCache(); }
+            if (parsed.inputDeadlines) window.inputDeadlines = parsed.inputDeadlines;
+            if (parsed.deptInputStatus) window.deptInputStatus = parsed.deptInputStatus;
 
             loadBaseConfigPageData();
             updateSchoolEmblemUI();
@@ -3399,6 +3678,10 @@
       btnConfirmPlan.addEventListener("click", function() {
         if (!window.isAdminAuthenticated) {
           openAdminLoginModal("plan");
+          return;
+        }
+        const pending = pendingDepartments();
+        if (pending.length && !window.confirm(`아직 '입력 완료' 표시를 하지 않은 부서가 있습니다.\n\n· ${pending.join("\n· ")}\n\n그래도 확정할까요?`)) {
           return;
         }
         document.querySelectorAll(".cell-editable").forEach(function(cell) {
@@ -3701,6 +3984,7 @@
       if (!container) return;
       const root = document.documentElement;
       root.style.setProperty("--fit-zoom", "1");
+      if (root.clientWidth < 640) return; // 휴대폰은 날짜별 목록으로 보여 주므로 축소하지 않음
       const wrapperStyle = getComputedStyle(container.parentElement);
       const needed = container.scrollWidth + parseFloat(wrapperStyle.paddingLeft) + parseFloat(wrapperStyle.paddingRight);
       const available = root.clientWidth;
@@ -3806,7 +4090,9 @@
       approvalSteps: clone(window.approvalSteps || []),
       annualGridEvents: clone(window.annualGridEvents || {}),
       recurringEvents: clone(window.recurringEvents || []),
-      deletedRowKeys: clone(window.deletedRowKeys || [])
+      deletedRowKeys: clone(window.deletedRowKeys || []),
+      extraHolidays: clone(window.extraHolidays || {}),
+      inputDeadlines: clone(window.inputDeadlines || {})
     };
   }
 
@@ -3818,7 +4104,8 @@
       currentMonthlyMotto: window.currentMonthlyMotto || "",
       currentFocusEffort: window.currentFocusEffort || "",
       docFooterNote: footer ? footer.innerText.trim() : "",
-      nextMonthPreviewContent: nextMonth ? nextMonth.innerText.trim() : ""
+      nextMonthPreviewContent: nextMonth ? nextMonth.innerText.trim() : "",
+      deptStatus: clone(window.deptInputStatus || {})
     };
   }
 
@@ -3841,6 +4128,10 @@
     if (data.annualGridEvents && typeof data.annualGridEvents === "object") window.annualGridEvents = clone(data.annualGridEvents);
     if (Array.isArray(data.recurringEvents)) window.recurringEvents = clone(data.recurringEvents);
     if (Array.isArray(data.deletedRowKeys)) window.deletedRowKeys = data.deletedRowKeys.slice();
+    window.extraHolidays = clone(data.extraHolidays || {});
+    window.inputDeadlines = clone(data.inputDeadlines || {});
+    if (typeof window.resetHolidayCache === "function") window.resetHolidayCache();
+    if (typeof window.renderExtraHolidayList === "function") window.renderExtraHolidayList();
 
     if (typeof window.loadBaseConfigPageData === "function") window.loadBaseConfigPageData();
     if (typeof window.updateSchoolEmblemUI === "function") window.updateSchoolEmblemUI();
@@ -3871,6 +4162,7 @@
     if (data.scheduleGridCells && typeof data.scheduleGridCells === "object") window.scheduleGridCells = clone(data.scheduleGridCells);
     if (typeof data.currentMonthlyMotto === "string") window.currentMonthlyMotto = data.currentMonthlyMotto;
     if (typeof data.currentFocusEffort === "string") window.currentFocusEffort = data.currentFocusEffort;
+    window.deptInputStatus = clone(data.deptStatus || {});
     if (typeof window.renderMonthlyPlan === "function") window.renderMonthlyPlan();
     const footer = document.getElementById("docFooterNote");
     const nextMonth = document.getElementById("nextMonthPreviewContent");
