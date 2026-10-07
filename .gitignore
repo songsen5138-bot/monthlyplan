@@ -1,0 +1,7 @@
+# 원본 백업(4.6MB)은 이 컴퓨터에만 보관
+backup/
+
+# Firebase 도구가 만드는 임시 파일
+.firebase/
+*-debug.log
+node_modules/
