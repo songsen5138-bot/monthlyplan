@@ -2246,6 +2246,9 @@
       window.isFirebaseAuthenticated = Boolean(user);
       window.isAdminAuthenticated = Boolean(user && user.uid === adminUid);
       updateAdminSessionButton();
+      // 검색 화면이 열려 있으면 관리자 전용 버튼 표시 여부를 다시 반영
+      const searchPage = document.getElementById("searchPastPageContainer");
+      if (searchPage && !searchPage.classList.contains("hidden")) executePastPlansSearch();
     };
 
     document.addEventListener("beforeinput", function(event) {
@@ -3862,10 +3865,10 @@
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
             <span class="text-xs font-bold text-slate-700">${targetSchoolName}${targetSchoolType}</span>
-            <button type="button" id="btnApplyPastPlanToCurrent" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition flex items-center gap-1 cursor-pointer">
+            ${window.isAdminAuthenticated ? `<button type="button" id="btnApplyPastPlanToCurrent" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition flex items-center gap-1 cursor-pointer">
               <i class="fa-solid fa-arrow-right-to-bracket text-[10px]"></i>
               <span>이 계획표로 이동하여 편집</span>
-            </button>
+            </button>` : ""}
           </div>
         </div>
 
