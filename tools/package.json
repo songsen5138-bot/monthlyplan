@@ -1,0 +1,16 @@
+{
+  "name": "monthlyplan-build",
+  "private": true,
+  "description": "월중계획 편하샘: 외부 CDN 없이 쓰도록 라이브러리·디자인 파일을 assets/vendor 로 만드는 도구",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "@fortawesome/fontawesome-free": "6.5.1",
+    "esbuild": "^0.25.0",
+    "firebase": "12.19.0",
+    "jszip": "^3.10.1",
+    "tailwindcss": "^3.4.17",
+    "xlsx": "0.18.5"
+  }
+}

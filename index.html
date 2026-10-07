@@ -3,20 +3,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>월중계획 편하샘 - 초등 교무업무 실시간 협업 시스템</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <!-- Google Fonts: Noto Sans KR and Nanum Myeongjo -->
+  <!-- 아이콘: 앱과 함께 배포되는 파일 (tools/build.mjs로 생성) -->
+  <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
+  <!-- Google Fonts: Noto Sans KR and Nanum Myeongjo (차단되면 맑은 고딕·바탕 글꼴로 표시) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&amp;family=Nanum+Myeongjo:wght@700&amp;display=swap" rel="stylesheet">
-  <!-- SheetJS for Excel import/export -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
+  <!-- SheetJS: 학사일정 엑셀 양식 내려받기·불러오기 -->
+  <script src="assets/vendor/xlsx.full.min.js"></script>
+  <!-- JSZip: 한글(HWPX) 문서 만들기 -->
+  <script src="assets/vendor/jszip.min.js"></script>
 
   <style>
     body {
-      font-family: 'Noto Sans KR', sans-serif;
+      font-family: 'Noto Sans KR', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
     }
     .brand-title-dot {
       position: relative;
@@ -43,7 +43,7 @@
       font-size: 12px;
     }
     .font-official {
-      font-family: 'Nanum Myeongjo', serif;
+      font-family: 'Nanum Myeongjo', 'Batang', 'AppleMyungjo', serif;
     }
     .plan-grid th, .plan-grid td {
       border: 1px solid #475569;
@@ -243,6 +243,8 @@
       }
     }
   </style>
+  <!-- 디자인(Tailwind로 미리 만든 CSS, tools/build.mjs로 생성): 예전 CDN처럼 맨 마지막에 불러와 위 스타일보다 우선 -->
+  <link rel="stylesheet" href="assets/app.css">
 </head>
 
 <body class="min-h-screen bg-slate-100/90 antialiased selection:bg-indigo-100 selection:text-indigo-800 text-slate-800">
@@ -647,6 +649,24 @@
                     </label>
                   </div>
                 </div>
+
+                <div class="p-3.5 bg-white border border-slate-200 rounded-xl space-y-2">
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 text-slate-900">
+                      <span class="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs shadow-xs flex-shrink-0">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                      </span>
+                      <span class="font-extrabold text-sm">서버 자동 백업 (최근 30개)</span>
+                    </div>
+                    <button type="button" id="btnCreateBackupNow" class="btn-sub">
+                      <i class="fa-solid fa-cloud-arrow-up text-xs text-indigo-600"></i>
+                      <span>지금 백업</span>
+                    </button>
+                  </div>
+                  <p class="text-[12px] text-slate-500 leading-relaxed">확정할 때마다, 그리고 관리자가 접속한 날 하루 한 번 설정과 계획표 전체가 서버에 자동 저장됩니다.
+                    실수로 지운 내용이 있으면 원하는 시점을 골라 되돌릴 수 있습니다. 되돌리기 직전 상태도 자동으로 한 번 더 백업됩니다.</p>
+                  <div id="backupList" class="divide-y divide-slate-100 text-[12px] border-t border-slate-100"></div>
+                </div>
               </div>
 
               <div id="sectionConfigCredentials" class="bg-white p-5 rounded-xl border border-slate-200/90 shadow-2xs space-y-4 hidden">
@@ -969,6 +989,17 @@
             </div>
 
             <div class="space-y-4 text-xs text-slate-700">
+              <div class="bg-slate-900 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                <video id="guideIntroVideo" class="w-full block" controls preload="metadata" src="media/intro.mp4"></video>
+                <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2 bg-white">
+                  <span class="text-sm font-bold text-slate-800"><i class="fa-solid fa-circle-play text-indigo-600 mr-1.5"></i>2분 40초 소개 영상</span>
+                  <button type="button" id="btnShowOnboarding" class="btn-sub">
+                    <i class="fa-solid fa-shoe-prints text-xs text-indigo-600"></i>
+                    <span>처음 안내 다시 보기</span>
+                  </button>
+                </div>
+              </div>
+
               <div class="flex gap-4 items-start bg-indigo-50/60 p-4 rounded-xl border border-indigo-100">
                 <span class="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-sm">
                   <i class="fa-solid fa-gear text-[11px]"></i>
@@ -993,7 +1024,8 @@
                   </h4>
                   <p class="text-slate-600 leading-relaxed text-sm">
                     업무담당자들은 <span class="font-bold text-amber-700">아이디 guest@gmail.com</span> 비번 : <span class="font-bold text-rose-700">123456</span> 으로 로그인하여 해당 월의 교육활동 계획을 작성합니다.<br>
-                    관리자는 필요없는 날짜를 선택하여 안보이게 할 수 있습니다.<br>
+                    다 입력했으면 표 위 <span class="font-bold text-emerald-700">부서별 입력</span>에서 자기 부서를 눌러 완료로 표시해 주세요.<br>
+                    관리자는 필요없는 날짜를 선택하여 안보이게 할 수 있고, <span class="font-bold text-sky-700">한글 내려받기</span>로 학교 양식의 한글 문서를 받을 수 있습니다.<br>
                     관리자가 <span class="font-bold text-rose-700">확정 버튼</span>을 클릭하면 해당 월의 자료가 확정되고, <span class="font-bold text-indigo-700">이전 교육활동 계획 검색</span> 메뉴를 통하여 이전 자료를 확인할 수 있습니다.
                   </p>
                 </div>
@@ -1006,6 +1038,33 @@
 
       </div>
 
+    </div>
+  </div>
+
+  <!-- Dialog: 처음 방문한 사람을 위한 3단계 안내 -->
+  <div id="modalOnboarding" class="no-print fixed inset-0 bg-slate-950/60 flex items-center justify-center z-50 p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100">
+      <div class="bg-indigo-700 px-6 py-4 text-white">
+        <h3 class="font-extrabold text-base"><i class="fa-solid fa-hand-sparkles text-amber-300 mr-1.5"></i>월중계획 편하샘, 이렇게 쓰세요</h3>
+      </div>
+      <ol class="p-6 space-y-4 text-sm text-slate-700">
+        <li class="flex gap-3">
+          <span class="w-7 h-7 rounded-full bg-indigo-600 text-white font-extrabold flex items-center justify-center flex-shrink-0">1</span>
+          <div><b class="text-slate-900">로그인</b><br>오른쪽 위 <b>로그인</b> 버튼을 눌러 학교에서 안내받은 계정으로 로그인합니다.</div>
+        </li>
+        <li class="flex gap-3">
+          <span class="w-7 h-7 rounded-full bg-indigo-600 text-white font-extrabold flex items-center justify-center flex-shrink-0">2</span>
+          <div><b class="text-slate-900">내 부서 칸에 입력</b><br>교육활동 계획 표에서 자기 부서 칸을 눌러 바로 입력합니다. 입력한 내용은 자동으로 저장됩니다.</div>
+        </li>
+        <li class="flex gap-3">
+          <span class="w-7 h-7 rounded-full bg-indigo-600 text-white font-extrabold flex items-center justify-center flex-shrink-0">3</span>
+          <div><b class="text-slate-900">입력 완료 표시</b><br>다 썼으면 표 위 <b>부서별 입력</b>에서 내 부서를 눌러 완료로 표시합니다. 마감일도 그곳에서 확인할 수 있습니다.</div>
+        </li>
+      </ol>
+      <div class="px-6 pb-5 flex flex-wrap justify-end gap-2">
+        <button type="button" id="btnOnboardingVideo" class="btn-sub"><i class="fa-solid fa-circle-play text-xs text-indigo-600"></i><span>소개 영상 보기</span></button>
+        <button type="button" id="btnOnboardingClose" class="btn-main"><i class="fa-solid fa-check text-xs"></i><span>시작하기</span></button>
+      </div>
     </div>
   </div>
 
@@ -2746,6 +2805,7 @@
       } else if (sectionKey === "backup") {
         if (secBackup) secBackup.classList.remove("hidden");
         if (titleEl) titleEl.textContent = "백업 / 복원";
+        renderBackupList();
         if (iconEl) iconEl.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>';
         if (btnSubConfigBackup) {
           btnSubConfigBackup.classList.add("bg-amber-100", "text-amber-800", "font-bold");
@@ -3602,59 +3662,207 @@
       });
     }
 
-    const btnExportCurrentPlanExcel = document.getElementById("btnExportCurrentPlanExcel");
-    if (btnExportCurrentPlanExcel) {
-      btnExportCurrentPlanExcel.addEventListener("click", function() {
-        if (typeof XLSX === "undefined") {
-          showToast("엑셀 기능을 불러오지 못했습니다.");
-          return;
-        }
+    // 화면의 계획표 칸에 입력된 내용을 데이터에 반영 (확정·한글 내려받기 전에 사용)
+    function syncCellsFromDom() {
+      document.querySelectorAll("#scheduleTableBody .cell-editable").forEach(function(cell) {
+        const cid = cell.dataset.cellId;
+        if (!cid) return;
+        const val = cell.innerText.trim();
+        if (val && val !== "-") window.scheduleGridCells[cid] = val;
+        else delete window.scheduleGridCells[cid];
+      });
+    }
 
-        const scheduleTable = document.querySelector("#planA4Sheet table.plan-grid");
-        if (!scheduleTable) {
-          showToast("내려받을 교육활동 계획표를 찾을 수 없습니다.");
-          return;
-        }
+    // ---------- 한글(HWPX) 내려받기: assets/template/plan-template.hwpx 양식에 내용을 채움 ----------
+    // 양식의 글자 모양(charPr)·문단 모양(paraPr)·테두리(borderFill) 번호를 그대로 사용
+    const HWPX_LAYOUT = {
+      dayW: 2068, dowW: 1785, deptTotalW: 50555, baseRowH: 1276,
+      // [왼쪽 날짜 칸, 가운데 칸, 오른쪽 끝 칸] 테두리 번호: 첫 행은 위 이중선, 마지막 행은 아래 이중선, 쉬는 날은 회색
+      border: {
+        normal: { first: [21, 23, 26], mid: [10, 8, 9], last: [35, 36, 37] },
+        off: { first: [32, 33, 34], mid: [14, 15, 16], last: [28, 29, 31] }
+      }
+    };
 
-        const schoolYear = Number(window.currentSchoolYear) || new Date().getFullYear();
-        const monthOrder = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "1", "2"];
-        const selectedMonths = (Array.isArray(window.selectedPlanMonths) && window.selectedPlanMonths.length > 0
-          ? window.selectedPlanMonths
-          : [window.currentPlanMonth || "10"])
-          .map(String)
-          .sort(function(a, b) { return monthOrder.indexOf(a) - monthOrder.indexOf(b); });
-        const monthsByYear = {};
-        selectedMonths.forEach(function(month) {
-          const calendarYear = (month === "1" || month === "2") ? schoolYear + 1 : schoolYear;
-          if (!monthsByYear[calendarYear]) monthsByYear[calendarYear] = [];
-          monthsByYear[calendarYear].push(month);
+    function xmlText(text) {
+      return String(text == null ? "" : text).replace(/[&<>"]/g, function(ch) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch];
+      });
+    }
+
+    function hwpxParas(lines, paraPr, charPr) {
+      const open = `<hp:p id="0" paraPrIDRef="${paraPr}" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0">`;
+      if (!lines.length) return `${open}<hp:run charPrIDRef="${charPr}"/></hp:p>`;
+      return lines.map(function(line) {
+        return `${open}<hp:run charPrIDRef="${charPr}"><hp:t>${xmlText(line)}</hp:t></hp:run></hp:p>`;
+      }).join("");
+    }
+
+    function hwpxCell(o) {
+      const m = o.margin;
+      return `<hp:tc name="" header="0" hasMargin="${o.hasMargin ? 1 : 0}" protect="0" editable="0" dirty="0" borderFillIDRef="${o.border}">` +
+        `<hp:subList id="" textDirection="HORIZONTAL" lineWrap="BREAK" vertAlign="CENTER" linkListIDRef="0" linkListNextIDRef="0" textWidth="0" textHeight="0" hasTextRef="0" hasNumRef="0">${o.paras}</hp:subList>` +
+        `<hp:cellAddr colAddr="${o.col}" rowAddr="${o.row}"/><hp:cellSpan colSpan="${o.colSpan || 1}" rowSpan="${o.rowSpan || 1}"/>` +
+        `<hp:cellSz width="${o.width}" height="${o.height}"/><hp:cellMargin left="${m[0]}" right="${m[1]}" top="${m[2]}" bottom="${m[3]}"/></hp:tc>`;
+    }
+
+    // 칸 너비에 들어갈 줄 수를 대략 계산해 행 높이를 정함 (한글이 열 때 다시 맞춤)
+    function hwpxLineCount(lines, innerWidth, charSize) {
+      if (!lines.length) return 1;
+      return lines.reduce(function(sum, line) {
+        let width = 0;
+        for (const ch of line) width += /[\u0000-ÿ]/.test(ch) ? charSize * 0.55 : charSize;
+        return sum + Math.max(1, Math.ceil(width / innerWidth));
+      }, 0);
+    }
+
+    async function emblemAsPngBytes() {
+      const src = window.currentSchoolEmblem;
+      if (!src) return null;
+      const img = new Image();
+      await new Promise(function(resolve, reject) { img.onload = resolve; img.onerror = reject; img.src = src; });
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      canvas.getContext("2d").drawImage(img, 0, 0);
+      const blob = await new Promise(function(resolve) { canvas.toBlob(resolve, "image/png"); });
+      return blob ? new Uint8Array(await blob.arrayBuffer()) : null;
+    }
+
+    async function exportPlanAsHwpx() {
+      if (typeof JSZip === "undefined") {
+        showToast("한글 문서 기능을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.");
+        return;
+      }
+      syncCellsFromDom();
+      const L = HWPX_LAYOUT;
+      const order = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "1", "2"];
+      const months = (window.selectedPlanMonths || ["10"]).map(String).sort(function(a, b) { return order.indexOf(a) - order.indexOf(b); });
+      const year = window.currentSchoolYear;
+      const depts = getActiveDepartments();
+      const n = depts.length;
+
+      // 부서 칸 너비: 부서 설정의 비율대로 나눔
+      ensureDepartmentWidths();
+      const pct = depts.map(function(d, i) { return Number(window.departmentWidths[i]) || (100 / n); });
+      const pctSum = pct.reduce(function(a, b) { return a + b; }, 0);
+      const deptW = pct.map(function(p) { return Math.round(L.deptTotalW * p / pctSum); });
+      deptW[n - 1] += L.deptTotalW - deptW.reduce(function(a, b) { return a + b; }, 0);
+
+      // 행 데이터 (여러 달을 고른 경우 이어서 붙임)
+      const rows = [];
+      parseMultiMonthList(year, months).forEach(function(cfg) {
+        buildPlanRows(cfg.year, cfg.month, currentPlanSource()).forEach(function(row, idx) {
+          row.dayLabel = (months.length > 1 && idx === 0) ? `${row.month}.${row.day}` : String(row.day);
+          rows.push(row);
         });
-        const periodLabel = Object.keys(monthsByYear)
-          .sort(function(a, b) { return Number(a) - Number(b); })
-          .map(function(year) { return `${year}년 ${monthsByYear[year].join(", ")}월`; })
-          .join(" ");
-        const planTitle = `${periodLabel} 교육활동계획`;
+      });
 
-        const scheduleClone = scheduleTable.cloneNode(true);
-        scheduleClone.querySelectorAll(".no-print").forEach(function(el) { el.remove(); });
-        const scheduleRows = XLSX.utils.sheet_to_json(XLSX.utils.table_to_sheet(scheduleClone), { header: 1, blankrows: true });
-        const mottoTable = document.getElementById("planMottoEffortContainer");
-        const mottoRows = mottoTable
-          ? XLSX.utils.sheet_to_json(XLSX.utils.table_to_sheet(mottoTable.cloneNode(true)), { header: 1, blankrows: true })
-          : [];
-        const rows = [
-          [`${window.currentSchoolName || ""}${window.currentSchoolType || ""}`],
-          [planTitle],
-          [],
-          ...mottoRows,
-          [],
-          ...scheduleRows
-        ];
+      let xmlRows = "";
+      let tableHeight = 0;
+      // 머리글 1행: 일 / 요일 / 주요 교육 활동
+      const headMargin = [141, 141, 141, 141];
+      xmlRows += "<hp:tr>" +
+        hwpxCell({ border: 20, col: 0, row: 0, rowSpan: 2, width: L.dayW, height: L.baseRowH * 2, margin: headMargin, paras: hwpxParas(["일"], 25, 33) }) +
+        hwpxCell({ border: 22, col: 1, row: 0, rowSpan: 2, width: L.dowW, height: L.baseRowH * 2, margin: headMargin, paras: hwpxParas(["요일"], 25, 33) }) +
+        hwpxCell({ border: 19, col: 2, row: 0, colSpan: n, width: L.deptTotalW, height: L.baseRowH, margin: headMargin, paras: hwpxParas(["주 요  교 육 활 동"], 25, 33) }) +
+        "</hp:tr>";
+      // 머리글 2행: 부서 이름
+      xmlRows += "<hp:tr>" + depts.map(function(name, i) {
+        return hwpxCell({ border: i === n - 1 ? 25 : 24, col: 2 + i, row: 1, width: deptW[i], height: L.baseRowH, margin: headMargin, paras: hwpxParas([name], 25, 33) });
+      }).join("") + "</hp:tr>";
+      tableHeight += L.baseRowH * 2;
 
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), "교육활동계획");
-        XLSX.writeFile(workbook, `${planTitle}.xlsx`);
-        showToast("교육활동 계획 엑셀 파일을 다운로드했습니다.");
+      // 날짜 행
+      rows.forEach(function(row, idx) {
+        const position = idx === 0 ? "first" : idx === rows.length - 1 ? "last" : "mid";
+        const borders = L.border[row.isOff ? "off" : "normal"][position];
+        const r = 2 + idx;
+        const dayChar = row.isOff ? 22 : 14;
+        let lines = 1;
+        const deptCells = row.cells.map(function(cell, i) {
+          const textLines = cell.text ? cell.text.split("\n").filter(function(l) { return l.trim(); }) : [];
+          lines = Math.max(lines, hwpxLineCount(textLines, deptW[i] - 170, 800));
+          return { textLines: textLines, charPr: cell.isHolidayText ? 24 : 20, border: i === n - 1 ? borders[2] : borders[1], width: deptW[i] };
+        });
+        const height = Math.max(L.baseRowH, 282 + lines * 800 + (lines - 1) * 240);
+        tableHeight += height;
+        xmlRows += "<hp:tr>" +
+          hwpxCell({ border: borders[0], col: 0, row: r, width: L.dayW, height: height, margin: [141, 141, 141, 141], paras: hwpxParas([row.dayLabel], 19, dayChar) }) +
+          hwpxCell({ border: borders[1], col: 1, row: r, width: L.dowW, height: height, margin: [141, 141, 141, 141], paras: hwpxParas([row.dowName], 19, dayChar) }) +
+          deptCells.map(function(c, i) {
+            return hwpxCell({ border: c.border, col: 2 + i, row: r, width: c.width, height: height, hasMargin: true, margin: [85, 85, 141, 141], paras: hwpxParas(c.textLines, 30, c.charPr) });
+          }).join("") + "</hp:tr>";
+      });
+
+      // 다음 달 주요 행사 예고
+      const lastMonth = parseInt(months[months.length - 1], 10);
+      const nextMonth = lastMonth === 12 ? 1 : lastMonth + 1;
+      const previewEl = document.getElementById("nextMonthPreviewContent");
+      const previewLines = previewEl ? previewEl.innerText.replace(/ /g, " ").split("\n").map(function(l) { return l.trim(); }).filter(Boolean) : [];
+      const firstSpan = n >= 2 ? 3 : 2;
+      const firstW = L.dayW + L.dowW + (n >= 2 ? deptW[0] : 0);
+      const previewH = Math.max(3336, 282 + previewLines.length * 1080);
+      const labelOpen = `<hp:p id="0" paraPrIDRef="32" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0">`;
+      xmlRows += "<hp:tr>" +
+        hwpxCell({ border: 27, col: 0, row: 2 + rows.length, colSpan: firstSpan, width: firstW, height: previewH, hasMargin: true, margin: [141, 141, 56, 56],
+          paras: `${labelOpen}<hp:run charPrIDRef="25"><hp:t> </hp:t></hp:run><hp:run charPrIDRef="26"><hp:t>${nextMonth}월 주요 행사 예고 </hp:t></hp:run><hp:run charPrIDRef="25"><hp:t> </hp:t></hp:run></hp:p>` }) +
+        hwpxCell({ border: 30, col: firstSpan, row: 2 + rows.length, colSpan: n + 2 - firstSpan, width: L.dayW + L.dowW + L.deptTotalW - firstW, height: previewH, margin: [141, 141, 141, 141],
+          paras: hwpxParas(previewLines, 28, 27) }) +
+        "</hp:tr>";
+      tableHeight += previewH;
+
+      // 월훈·노력중점
+      const efforts = String(window.currentFocusEffort || "").split(/\s{2,}/).map(function(s) { return s.trim(); }).filter(Boolean);
+      const effortLines = [];
+      for (let i = 0; i < efforts.length; i += 2) {
+        effortLines.push(`  ◦${efforts[i]}` + (efforts[i + 1] ? `        ◦${efforts[i + 1]}` : ""));
+      }
+
+      const response = await fetch("assets/template/plan-template.hwpx");
+      if (!response.ok) throw new Error("양식 파일을 불러오지 못했습니다.");
+      const zip = await JSZip.loadAsync(await response.arrayBuffer());
+      let section = await zip.file("Contents/section0.xml").async("string");
+      const fill = {
+        "{{TITLE_A}}": xmlText(`${year}학년도 ${months.join("월, ")}`),
+        "{{LABEL_MOTTO}}": xmlText(window.labelMotto || "월훈"),
+        "{{MOTTO}}": xmlText(window.currentMonthlyMotto || ""),
+        "{{LABEL_EFFORT}}": xmlText(window.labelEffort || "노력중점"),
+        "{{EFFORT_PARAS}}": hwpxParas(effortLines, 24, 16),
+        "{{ROWCNT}}": String(rows.length + 3),
+        "{{COLCNT}}": String(n + 2),
+        "{{TBL_H}}": String(tableHeight),
+        "{{MAIN_ROWS}}": xmlRows,
+        "{{FOOTER}}": xmlText((document.getElementById("docFooterNote") || {}).innerText || "")
+      };
+      Object.keys(fill).forEach(function(key) { section = section.split(key).join(fill[key]); });
+      zip.file("Contents/section0.xml", section);
+
+      const emblem = await emblemAsPngBytes().catch(function() { return null; });
+      if (emblem) zip.file("BinData/image1.png", emblem);
+      zip.file("mimetype", "application/hwp+zip", { compression: "STORE" });
+
+      const blob = await zip.generateAsync({ type: "blob", mimeType: "application/hwp+zip", compression: "DEFLATE" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${year}학년도 ${months.join("·")}월 교육활동 계획.hwpx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(a.href); }, 10000);
+      return blob;
+    }
+    window.exportPlanAsHwpx = exportPlanAsHwpx;
+
+    const btnExportCurrentPlanHwpx = document.getElementById("btnExportCurrentPlanHwpx");
+    if (btnExportCurrentPlanHwpx) {
+      btnExportCurrentPlanHwpx.addEventListener("click", function() {
+        exportPlanAsHwpx().then(function(blob) {
+          if (blob) showToast("교육활동 계획 한글 문서(HWPX)를 내려받았습니다.");
+        }).catch(function(error) {
+          console.warn("한글 문서 만들기 오류:", error);
+          showToast("한글 문서를 만들지 못했습니다: " + error.message);
+        });
       });
     }
 
@@ -3684,17 +3892,7 @@
         if (pending.length && !window.confirm(`아직 '입력 완료' 표시를 하지 않은 부서가 있습니다.\n\n· ${pending.join("\n· ")}\n\n그래도 확정할까요?`)) {
           return;
         }
-        document.querySelectorAll(".cell-editable").forEach(function(cell) {
-          const cid = cell.dataset.cellId;
-          if (cid) {
-            const val = cell.innerText.trim();
-            if (val && val !== "-") {
-              window.scheduleGridCells[cid] = val;
-            } else {
-              delete window.scheduleGridCells[cid];
-            }
-          }
-        });
+        syncCellsFromDom();
 
         const mottoElem = document.getElementById("planMonthlyMotto");
         const effortElem = document.getElementById("planFocusEffort");
@@ -3997,6 +4195,98 @@
       fitLayoutFrame = requestAnimationFrame(fitLayoutToWindow);
     });
 
+    // ---------- 처음 방문 안내 (이 브라우저에서 한 번만 자동으로 표시) ----------
+    const ONBOARDING_KEY = "monthlyplan_onboarding_seen_v1";
+    function showOnboarding() {
+      const modal = document.getElementById("modalOnboarding");
+      if (modal) modal.classList.remove("hidden");
+    }
+    function closeOnboarding() {
+      const modal = document.getElementById("modalOnboarding");
+      if (modal) modal.classList.add("hidden");
+      try { localStorage.setItem(ONBOARDING_KEY, "1"); } catch (e) { /* 저장 못 해도 사용에는 지장 없음 */ }
+    }
+    function maybeShowOnboarding() {
+      let seen = false;
+      try { seen = localStorage.getItem(ONBOARDING_KEY) === "1"; } catch (e) { seen = false; }
+      if (!seen) showOnboarding();
+    }
+    const btnOnboardingClose = document.getElementById("btnOnboardingClose");
+    if (btnOnboardingClose) btnOnboardingClose.addEventListener("click", closeOnboarding);
+    const btnOnboardingVideo = document.getElementById("btnOnboardingVideo");
+    if (btnOnboardingVideo) {
+      btnOnboardingVideo.addEventListener("click", function() {
+        closeOnboarding();
+        showGuidePage();
+        const video = document.getElementById("guideIntroVideo");
+        if (video) { video.scrollIntoView({ block: "center" }); video.play().catch(function() {}); }
+      });
+    }
+    const btnShowOnboarding = document.getElementById("btnShowOnboarding");
+    if (btnShowOnboarding) btnShowOnboarding.addEventListener("click", showOnboarding);
+
+    // ---------- 서버 자동 백업 목록 ----------
+    async function renderBackupList() {
+      const list = document.getElementById("backupList");
+      if (!list) return;
+      if (!window.firebaseAuthClient || !window.isAdminAuthenticated) {
+        list.innerHTML = `<p class="py-2 text-slate-400">관리자로 로그인하면 백업 목록이 보입니다.</p>`;
+        return;
+      }
+      list.innerHTML = `<p class="py-2 text-slate-400">백업 목록을 불러오는 중…</p>`;
+      let items = [];
+      try {
+        items = await window.firebaseAuthClient.listBackups();
+      } catch (error) {
+        list.innerHTML = `<p class="py-2 text-rose-600">백업 목록을 불러오지 못했습니다. (${escapeHtml(error.message)})</p>`;
+        return;
+      }
+      if (!items.length) {
+        list.innerHTML = `<p class="py-2 text-slate-400">아직 백업이 없습니다. '지금 백업'을 눌러 첫 백업을 만들 수 있습니다.</p>`;
+        return;
+      }
+      list.innerHTML = items.map(function(item) {
+        return `<div class="flex flex-wrap items-center gap-2 py-1.5">
+            <span class="font-bold text-slate-800 w-40">${escapeHtml(new Date(item.createdAt).toLocaleString())}</span>
+            <span class="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 font-bold">${escapeHtml(item.reason || "")}</span>
+            <span class="text-slate-500 flex-1 truncate">${escapeHtml(item.by || "")}</span>
+            <button type="button" class="backup-restore-btn btn-sub" data-key="${escapeHtml(item.key)}"><i class="fa-solid fa-rotate-left text-xs text-indigo-600"></i><span>이 시점으로 되돌리기</span></button>
+          </div>`;
+      }).join("");
+      list.querySelectorAll(".backup-restore-btn").forEach(function(btn) {
+        btn.addEventListener("click", async function() {
+          const item = items.find(function(i) { return i.key === btn.dataset.key; });
+          const when = item ? new Date(item.createdAt).toLocaleString() : "";
+          if (!window.confirm(`${when} 백업 시점으로 설정과 계획표 전체를 되돌릴까요?\n\n지금 상태는 되돌리기 직전에 자동으로 한 번 더 백업됩니다.`)) return;
+          try {
+            await window.firebaseAuthClient.restoreBackup(btn.dataset.key);
+            showToast(`${when} 시점으로 되돌렸습니다.`);
+            renderBackupList();
+          } catch (error) {
+            showToast("되돌리지 못했습니다: " + error.message);
+          }
+        });
+      });
+    }
+    window.renderBackupList = renderBackupList;
+
+    const btnCreateBackupNow = document.getElementById("btnCreateBackupNow");
+    if (btnCreateBackupNow) {
+      btnCreateBackupNow.addEventListener("click", async function() {
+        if (!window.isAdminAuthenticated || !window.firebaseAuthClient) {
+          openAdminLoginModal("backup");
+          return;
+        }
+        try {
+          await window.firebaseAuthClient.createBackup("수동");
+          showToast("지금 상태를 서버에 백업했습니다.");
+          renderBackupList();
+        } catch (error) {
+          showToast("백업하지 못했습니다: " + error.message);
+        }
+      });
+    }
+
     // Application Lifecycle Entrypoint
     window.onload = function () {
       initMonthPillsEvents();
@@ -4015,6 +4305,7 @@
       if (guidePageContainer) guidePageContainer.classList.remove("hidden");
       resetSubMenuStyles();
       fitLayoutToWindow();
+      maybeShowOnboarding();
       window.appInitialized = true;
       if (window.firebaseAuthClient) window.firebaseAuthClient.start();
     };
@@ -4023,8 +4314,9 @@
 
 <div id="toastNotificationContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+  // Firebase 12.19 (앱과 함께 배포되는 파일, tools/build.mjs로 생성)
   import {
+    initializeApp,
     EmailAuthProvider,
     getAuth,
     onAuthStateChanged,
@@ -4032,16 +4324,14 @@
     signInWithEmailAndPassword,
     signOut,
     updatePassword,
-    verifyBeforeUpdateEmail
-  } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-  import {
+    verifyBeforeUpdateEmail,
     get,
     getDatabase,
     onValue,
     ref,
     set,
     update
-  } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+  } from "./assets/vendor/firebase.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDgu1FEZT-E7UL47B0YMNR4qvuDyQju-pM",
@@ -4213,8 +4503,68 @@
       if (!configSnap.exists() && user.uid !== ADMIN_UID && window.showToast) {
         window.showToast("관리자가 먼저 공유 설정을 시작해야 합니다.");
       }
+      if (configSnap.exists() && planSnap.exists()) dailyBackupIfNeeded();
     } catch (error) {
       showPermissionError(error);
+    }
+  }
+
+  // ---------- 서버 백업: backups/<시각> 에 전체 자료, backupIndex/<시각> 에 목록용 정보 ----------
+  const BACKUP_KEEP = 30;
+  function isAdminUser() {
+    return Boolean(currentUser && currentUser.uid === ADMIN_UID);
+  }
+
+  async function createBackup(reason) {
+    if (!isAdminUser()) throw new Error("관리자 로그인이 필요합니다.");
+    const createdAt = new Date().toISOString();
+    const key = createdAt.replace(/[.:]/g, "-") + "_" + Math.random().toString(36).slice(2, 6); // 같은 순간에 만들어도 겹치지 않게
+    const info = { createdAt: createdAt, by: currentUser.email || "", reason: reason };
+    // 서버에 저장된 최신 자료를 그대로 백업 (다른 선생님이 방금 입력한 내용까지 포함)
+    const serverConfig = (await get(ref(database, `${ROOT}/config`))).val();
+    const serverPlan = (await get(ref(database, `${ROOT}/plans/current`))).val();
+    await set(ref(database, `${ROOT}/backups/${key}`), Object.assign({}, info, {
+      config: serverConfig || configSnapshot(),
+      plan: serverPlan || planSnapshot()
+    }));
+    await set(ref(database, `${ROOT}/backupIndex/${key}`), info);
+    // 오래된 백업 정리
+    const index = (await get(ref(database, `${ROOT}/backupIndex`))).val() || {};
+    const old = Object.keys(index).sort().slice(0, Math.max(0, Object.keys(index).length - BACKUP_KEEP));
+    if (old.length) {
+      const patch = {};
+      old.forEach(function(k) { patch[`backups/${k}`] = null; patch[`backupIndex/${k}`] = null; });
+      await update(ref(database, ROOT), patch);
+    }
+    return key;
+  }
+
+  async function listBackups() {
+    if (!isAdminUser()) return [];
+    const index = (await get(ref(database, `${ROOT}/backupIndex`))).val() || {};
+    return Object.keys(index).sort().reverse().map(function(key) { return Object.assign({ key: key }, index[key]); });
+  }
+
+  async function restoreBackup(key) {
+    if (!isAdminUser()) throw new Error("관리자 로그인이 필요합니다.");
+    const data = (await get(ref(database, `${ROOT}/backups/${key}`))).val();
+    if (!data || !data.config || !data.plan) throw new Error("백업 자료를 찾을 수 없습니다.");
+    await createBackup("되돌리기 직전");
+    await set(ref(database, `${ROOT}/config`), Object.assign({}, data.config, { _updatedBy: clientId }));
+    await set(ref(database, `${ROOT}/plans/current`), Object.assign({}, data.plan, { _updatedBy: clientId }));
+    applyConfig(data.config);
+    applyPlan(data.plan);
+  }
+
+  // 관리자가 접속하면 마지막 백업이 하루 이상 지났을 때 한 번 자동 백업
+  async function dailyBackupIfNeeded() {
+    if (!isAdminUser()) return;
+    try {
+      const items = await listBackups();
+      const last = items.length ? new Date(items[0].createdAt).getTime() : 0;
+      if (Date.now() - last > 20 * 60 * 60 * 1000) await createBackup("자동(하루 1회)");
+    } catch (error) {
+      console.warn("자동 백업 오류:", error);
     }
   }
 
@@ -4319,7 +4669,11 @@
       });
       await update(ref(database, `${ROOT}/archive`), Object.assign(patch, { _updatedBy: clientId }));
       await update(ref(database, `${ROOT}/plans/current`), Object.assign(planSnapshot(), { _updatedBy: clientId }));
-    }
+      await createBackup(`확정(${months.join("·")}월)`).catch(function(error) { console.warn("확정 백업 오류:", error); });
+    },
+    createBackup: createBackup,
+    listBackups: listBackups,
+    restoreBackup: restoreBackup
   };
 
   const shareButton = document.getElementById("btnShareCollabLink");

@@ -1,0 +1,28 @@
+{
+  "rules": {
+    "schools": {
+      "monthlyplan": {
+        "config": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.uid === 'g9KrRHcmnpceooW2PNfXgPMoHx42'"
+        },
+        "plans": {
+          ".read": "auth != null",
+          ".write": "auth != null && newData.exists()"
+        },
+        "archive": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.uid === 'g9KrRHcmnpceooW2PNfXgPMoHx42'"
+        },
+        "backups": {
+          ".read": "auth != null && auth.uid === 'g9KrRHcmnpceooW2PNfXgPMoHx42'",
+          ".write": "auth != null && auth.uid === 'g9KrRHcmnpceooW2PNfXgPMoHx42'"
+        },
+        "backupIndex": {
+          ".read": "auth != null && auth.uid === 'g9KrRHcmnpceooW2PNfXgPMoHx42'",
+          ".write": "auth != null && auth.uid === 'g9KrRHcmnpceooW2PNfXgPMoHx42'"
+        }
+      }
+    }
+  }
+}

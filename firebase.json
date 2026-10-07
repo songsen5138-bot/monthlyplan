@@ -2,12 +2,9 @@
   "hosting": {
     "public": ".",
     "ignore": [
-      "**/*.!(html)",
-      "backup/**",
-      ".git/**",
-      ".firebase/**",
-      ".claude/**",
-      ".github/**",
+      "*.!(html)",
+      "!(*.*)",
+      "!(assets|media)/**/*",
       "**/.*",
       "**/node_modules/**"
     ],
@@ -15,7 +12,14 @@
       {
         "source": "**/*.html",
         "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      },
+      {
+        "source": "assets/**",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       }
     ]
+  },
+  "database": {
+    "rules": "database.rules.json"
   }
 }
